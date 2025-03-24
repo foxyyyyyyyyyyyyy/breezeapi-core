@@ -123,7 +123,6 @@ export class WebSocketRouter {
     public async loadRoutes(): Promise<void> {
         // Implementation will depend on your specific requirements
         // This is a simple placeholder
-        console.log('Loading WebSocket routes from:', this.socketDir);
         
         // In a real implementation, you would:
         // 1. Scan the socketDir for route files
@@ -137,7 +136,6 @@ export class WebSocketRouter {
             try {
                 // Ensure dir is absolute
                 const absoluteDir = path.isAbsolute(dir) ? dir : path.resolve(dir);
-                console.log(`Scanning directory: ${absoluteDir}`);
                 
                 const entries = await readdir(absoluteDir, { withFileTypes: true });
                 
@@ -179,7 +177,6 @@ export class WebSocketRouter {
             // Use absolute path for imports
             const absolutePath = path.resolve(filePath);
             
-            console.log(`Attempting to load WebSocket route from: ${absolutePath}`);
             
             // Import the route module - use file:// protocol for Bun
             const routeModule = await import(`file://${absolutePath}`);
@@ -204,7 +201,7 @@ export class WebSocketRouter {
                 handler,
             });
             
-            console.log(`Successfully loaded WebSocket route: ${routePath}`);
+            console.log(`➕ Successfully registerd WebSocket route: ${routePath}`);
         } catch (error) {
             console.error(`Failed to load WebSocket route: ${filePath}`, error);
         }
