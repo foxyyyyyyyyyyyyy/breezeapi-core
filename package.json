@@ -1,0 +1,29 @@
+{
+  "name": "api-framework",
+  "version": "0.1.4",
+  "private": true,
+  "type": "module",
+  "module": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "test": "bun test",
+    "dev": "bun run examples/file-base-static-page-routing-app/index.ts"
+  },
+
+  "dependencies": {
+    "zod": "^3.24.2",
+    "zod-to-json-schema": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "tsc-alias": "^1.8.11"
+  },
+  "peerDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
