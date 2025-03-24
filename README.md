@@ -1,5 +1,5 @@
 
-## 📚 Table of Contents
+##  Table of Contents
 
 -   [Overview](#-overview)
 -   [Features](#-features)
@@ -20,7 +20,7 @@
 -   [FAQs & Resources](#-faqs--additional-resources)
 
 ## 🚀 Overview
- - fork of burger api but only looking for api use and not for the all in one but nothing fully stuff.
+ - fork of burger api reduced use of pages, added dynamic websocket support with file based routing allowing to add major and minor sockets and multiple sockets in the same api using bun
 
 ## ✨ Features
 
