@@ -92,104 +92,140 @@ export class Server {
     }
 
 
-public startSocket<T extends WebSocketData>(
-    routes: { [key: string]: any } | undefined,
-    handler: RequestHandler,
-    wsRouter: WebSocketRouter,
-    port: number,
-    cb?: () => void
-): void {
-    // Start Bun's native server using Bun.serve
-    this.server = Bun.serve({
-        port,
-        fetch: async (request: Request, server) => {
-            try {
-                // Check if it's a WebSocket upgrade request
-                if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
-                    const url = new URL(request.url);
-                    const { route, id } = wsRouter.matchRoute(url.pathname);
-                    
-                    if (route) {
-                        // Using Bun's server.upgrade approach
-                        const groupPath = id ? `${route.path}/${id}` : route.path;
+               public startSocket<T extends WebSocketData>(
+            routes: { [key: string]: any } | undefined,
+            handler: RequestHandler,
+            wsRouter: WebSocketRouter,
+            port: number,
+            cb?: () => void
+        ): void {
+            // Set the router globally so handlers can access it
+            (global as any).wsRouter = wsRouter;
+            
+            // Start Bun's native server using Bun.serve
+            this.server = Bun.serve({
+                port,
+                fetch: async (request: Request, server) => {
+                    try {
+                        // Check if it's a WebSocket upgrade request
+                        if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
+                            const url = new URL(request.url);
+                            console.log(`WebSocket connection attempt: ${url.pathname}`);
+                            const { route, id } = wsRouter.matchRoute(url.pathname);
+                            
+                            if (route) {
+                                // Important: Use a consistent group path format
+                                // For example, for chat rooms: /socket/chat/123
+                                // NOT using the route.path, but the actual resolved path
+                                const pathParts = url.pathname.split('/');
+                                const routeParts = route.path.split('/');
+                                
+                                // Group path should be the actual client path
+                                const groupPath = url.pathname;
+                                
+                                console.log(`WebSocket connection to group: ${groupPath}, id: ${id}`);
+                                
+                                // Upgrade with data that will be available in the WebSocket handlers
+                                server.upgrade(request, {
+                                    data: {
+                                        id,
+                                        groupPath,
+                                        createdAt: Date.now(),
+                                    },
+                                });
+                                return undefined;
+                            }
+                            
+                            // No matching WebSocket route
+                            console.log(`No WebSocket route found for: ${url.pathname}`);
+                            return new Response('WebSocket not found', { status: 404 });
+                        }
                         
-                        // Upgrade the connection to WebSocket
-                        server.upgrade(request, {
-                            data: {
-                                id,
-                                groupPath,
-                                createdAt: Date.now(),
-                            } as T,
-                        });
+                        // Handle regular HTTP requests
+                        const eSportsAppReq = new HttpRequest(
+                            request
+                        ) as unknown as apiRequest;
+        
+                        const eSportsAppRes =
+                            new HttpResponse() as unknown as apiResponse;
                         
-                        // Return undefined to indicate the connection was upgraded
-                        return undefined;
+                        return await handler(eSportsAppReq, eSportsAppRes);
+                    } catch (error) {
+                        console.error('Error in fetch handler:', error);
+                        // Return a custom error response
+                        return errorResponse(
+                            error,
+                            request,
+                            this.options.debug ?? false
+                        );
                     }
-                    
-                    // No matching WebSocket route
-                    return new Response('WebSocket not found', { status: 404 });
+                },
+                websocket: {
+                    open(ws: any) {
+                        console.log(`WebSocket opened for group: ${ws.data.groupPath}`);
+                        wsRouter.addToGroup(ws.data.groupPath, ws);
+                        
+                        // Get the number of clients in this group
+                        const clientCount = wsRouter.getGroupSockets(ws.data.groupPath).size;
+                        console.log(`Group ${ws.data.groupPath} now has ${clientCount} connections`);
+                        
+                        // Match route based on the original pattern, not the group path
+                        const { route } = wsRouter.matchRoute(ws.data.groupPath);
+                        if (route?.handler.open) {
+                            try {
+                                route.handler.open(ws, ws.data.id);
+                            } catch (error) {
+                                console.error(`Error in open handler:`, error);
+                            }
+                        }
+                    },
+                    message(ws: any, message: any) {
+                        console.log(`Message received in group: ${ws.data.groupPath}`);
+                        const { route } = wsRouter.matchRoute(ws.data.groupPath);
+                        if (route?.handler.message) {
+                            try {
+                                route.handler.message(ws, message, ws.data.id);
+                            } catch (error) {
+                                console.error(`Error in message handler:`, error);
+                            }
+                        }
+                    },
+                    close(ws: any, code: any, reason: any) {
+                        console.log(`WebSocket closed for group: ${ws.data.groupPath}`);
+                        wsRouter.removeFromGroup(ws.data.groupPath, ws);
+                        
+                        // Get the number of clients remaining in this group
+                        const clientCount = wsRouter.getGroupSockets(ws.data.groupPath).size;
+                        console.log(`Group ${ws.data.groupPath} now has ${clientCount} connections`);
+                        
+                        const { route } = wsRouter.matchRoute(ws.data.groupPath);
+                        if (route?.handler.close) {
+                            try {
+                                route.handler.close(ws, code, reason, ws.data.id);
+                            } catch (error) {
+                                console.error(`Error in close handler:`, error);
+                            }
+                        }
+                    },
+                    drain(ws: any) {
+                        const { route } = wsRouter.matchRoute(ws.data.groupPath);
+                        if (route?.handler.drain) {
+                            try {
+                                route.handler.drain(ws, ws.data.id);
+                            } catch (error) {
+                                console.error(`Error in drain handler:`, error);
+                            }
+                        }
+                    }
                 }
-                
-                // Handle regular HTTP requests
-                const eSportsAppReq = new HttpRequest(
-                    request
-                ) as unknown as apiRequest;
-
-                const eSportsAppRes =
-                    new HttpResponse() as unknown as apiResponse;
-                
-                return await handler(eSportsAppReq, eSportsAppRes);
-            } catch (error) {
-                // Return a custom error response
-                return errorResponse(
-                    error,
-                    request,
-                    this.options.debug ?? false
-                );
-            }
-        },
-        // WebSocket event handlers
-        websocket: {
-            open(ws:any) {
-                // Add to the appropriate group
-                wsRouter.addToGroup(ws.data.groupPath, ws);
-                
-                // Call the handler for the matched route
-                const { route } = wsRouter.matchRoute(ws.data.groupPath);
-                if (route?.handler.open) {
-                    route.handler.open(ws, ws.data.id);
-                }
-            },
-            message(ws: any, message: any) {
-                const { route } = wsRouter.matchRoute(ws.data.groupPath);
-                if (route?.handler.message) {
-                    route.handler.message(ws, message, ws.data.id);
-                }
-            },
-            close(ws: any, code: any, reason: any) {
-                // Remove from group
-                wsRouter.removeFromGroup(ws.data.groupPath, ws);
-                
-                const { route } = wsRouter.matchRoute(ws.data.groupPath);
-                if (route?.handler.close) {
-                    route.handler.close(ws, code, reason, ws.data.id);
-                }
-            },
-            drain(ws: any) {
-                const { route } = wsRouter.matchRoute(ws.data.groupPath);
-                if (route?.handler.drain) {
-                    route.handler.drain(ws, ws.data.id);
-                }
+            });
+            
+            if (cb) {
+                cb();
+            } else {
+                console.log(`✔ Server started on port: ${port} with WebSocket support`);
             }
         }
-    });
-    
-    if (cb) {
-        cb();
-    } else {
-        console.log(`✔ Server started on port: ${port} with WebSocket support`);
-    }
-}
 
 
 }
