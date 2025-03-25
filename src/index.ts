@@ -4,10 +4,11 @@ import { ApiRouter } from '@core/api-router.js';
 import { PageRouter } from '@core/page-router.js';
 import { generateOpenAPIDocument } from '@core/openapi.js';
 import { swaggerHtml } from '@core/swagger-ui.js';
-import { WebSocketRouter } from './core/ws-router';
+import { WebSocketRouter } from '@core/ws-router';
 
 // Import middleware
 import { createValidationMiddleware } from '@middleware/validator.js';
+import { cookieParseMiddleware } from '@middleware/cookiesparse';
 
 // Import types
 import type {
@@ -52,6 +53,10 @@ export class API {
           // Initialize WebSocket router
           if (options.socketDir) {
             this.wsRouter = new WebSocketRouter(options.socketDir, 'socket');
+        }
+
+        if(options.cookie){
+            this.addGlobalMiddleware(cookieParseMiddleware);
         }
 
         // Add global middleware

@@ -53,6 +53,11 @@ export interface ServerOptions {
     debug?: boolean;
 
     /**
+     * Allow cookies and parse them automatically
+     */
+    cookie?: boolean;
+
+    /**
      * Cors configuration for the API. This is an optional property that can be used
      * to configure Cross-Origin Resource Sharing (CORS) for the API.
      */
