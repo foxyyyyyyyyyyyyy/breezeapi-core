@@ -1,7 +1,6 @@
 {
-  "name": "api-framework",
-  "version": "0.1.4",
-  "private": true,
+  "name": "@breezeapi/core",
+  "version": "0.1.0",
   "type": "module",
   "module": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
