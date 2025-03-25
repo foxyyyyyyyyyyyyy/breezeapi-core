@@ -14,6 +14,13 @@ export interface ServerOptions {
     description?: string;
 
     /**
+     * Favicon of the api and documentation.
+     * This is an optional property that can be used to specify a custom favicon for the API documentation.
+     * TODO: implement favicon for the api 
+     */
+    favicon?: string;
+
+    /**
      * The directory path to load API routes from.
      * If not specified, no API routes are loaded.
      */
@@ -34,6 +41,7 @@ export interface ServerOptions {
     /**
      * The version of the API. This is an optional property that can be used
      * to specify the version of the API.
+     * TODO: use it for multi version support in the future. example migration between different versions
      */
     version?: string;
 
@@ -43,6 +51,48 @@ export interface ServerOptions {
      * information to the console or logs to aid in development and troubleshooting.
      */
     debug?: boolean;
+
+    /**
+     * Cors configuration for the API. This is an optional property that can be used
+     * to configure Cross-Origin Resource Sharing (CORS) for the API.
+     */
+    cors?: {
+        /**
+         * The Access-Control-Allow-Origin header value.
+         * This can be a string or an array of strings.
+         */
+        origin?: string | string[] | true;
+
+        /**
+         * The Access-Control-Allow-Methods header value.
+         * This can be a string or an array of strings.
+         */
+        methods?: string | string[];
+
+        /**
+         * The Access-Control-Allow-Headers header value.
+         * This can be a string or an array of strings.
+         */
+        allowedHeaders?: string | string[];
+
+        /**
+         * The Access-Control-Expose-Headers header value.
+         * This can be a string or an array of strings.
+         */
+        exposedHeaders?: string | string[];
+
+        /**
+         * The Access-Control-Allow-Credentials header value.
+         * This can be a boolean.
+         */
+        credentials?: boolean;
+
+        /**
+         * The Access-Control-Max-Age header value.
+         * This can be a number.
+         */
+        maxAge?: number;
+    };
 }
 
 type DefaultRequestProperties = {

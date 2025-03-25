@@ -1,5 +1,5 @@
 // Import stuff from eSportsApp-api
-import { eSportsApp, setDir } from '@src';
+import { API, setDir } from '@src';
 
 // Import middleware
 import { globalLogger } from './middleware/logger';
