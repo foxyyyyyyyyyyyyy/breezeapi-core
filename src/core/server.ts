@@ -53,21 +53,28 @@ export class Server {
                         return this.handleCorsPreflightRequest(request);
                     }
 
+                    
+
                     // Handle favicon requests
-                    if (request.url.endsWith('/favicon.ico') && this.options.favicon) {
+                    if (
+                        request.url.endsWith('/favicon.ico') &&
+                        this.options.favicon
+                    ) {
                         try {
                             // Read the favicon file
-                            const icon = await Bun.file(this.options.favicon).arrayBuffer();
+                            const icon = await Bun.file(
+                                this.options.favicon
+                            ).arrayBuffer();
                             const buffer = Buffer.from(icon);
-                            
+
                             // Create response with appropriate headers
                             return new Response(buffer, {
                                 status: 200,
                                 headers: {
                                     'Content-Type': 'image/x-icon',
                                     'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
-                                    'ETag': `W/"${buffer.length.toString(16)}"`,
-                                }
+                                    ETag: `W/"${buffer.length.toString(16)}"`,
+                                },
                             });
                         } catch (error) {
                             console.error('Error serving favicon:', error);
@@ -83,15 +90,18 @@ export class Server {
                     // Wrap the native Response with HttpResponse to get a apiResponse
                     const eSportsAppRes =
                         new HttpResponse() as unknown as apiResponse;
-                    
+
                     // Invoke and return the handler with the wrapped requests and responses
-                    const response = await handler(eSportsAppReq, eSportsAppRes);
-                    
+                    const response = await handler(
+                        eSportsAppReq,
+                        eSportsAppRes
+                    );
+
                     // Add CORS headers to the response if configured
                     if (this.options.cors) {
                         return this.addCorsHeaders(response, request);
                     }
-                    
+
                     return response;
                 } catch (error) {
                     // Return a custom error response
@@ -125,37 +135,52 @@ export class Server {
         // Handle Access-Control-Allow-Origin
         if (cors.origin) {
             if (cors.origin === true) {
-            // Allow any origin when cors.origin is true
-            const requestOrigin = request.headers.get('origin');
-            headers.set('Access-Control-Allow-Origin', requestOrigin || '*');
+                // Allow any origin when cors.origin is true
+                const requestOrigin = request.headers.get('origin');
+                headers.set(
+                    'Access-Control-Allow-Origin',
+                    requestOrigin || '*'
+                );
             } else if (Array.isArray(cors.origin)) {
-            const requestOrigin = request.headers.get('origin');
-            if (requestOrigin && cors.origin.includes(requestOrigin)) {
-                headers.set('Access-Control-Allow-Origin', requestOrigin);
+                const requestOrigin = request.headers.get('origin');
+                if (requestOrigin && cors.origin.includes(requestOrigin)) {
+                    headers.set('Access-Control-Allow-Origin', requestOrigin);
+                } else {
+                    headers.set('Access-Control-Allow-Origin', cors.origin[0]);
+                }
             } else {
-                headers.set('Access-Control-Allow-Origin', cors.origin[0]);
-            }
-            } else {
-            headers.set('Access-Control-Allow-Origin', cors.origin);
+                headers.set('Access-Control-Allow-Origin', cors.origin);
             }
         }
 
         // Handle Access-Control-Allow-Methods
         if (cors.methods) {
-            headers.set('Access-Control-Allow-Methods', 
-                Array.isArray(cors.methods) ? cors.methods.join(', ') : cors.methods);
+            headers.set(
+                'Access-Control-Allow-Methods',
+                Array.isArray(cors.methods)
+                    ? cors.methods.join(', ')
+                    : cors.methods
+            );
         }
 
         // Handle Access-Control-Allow-Headers
         if (cors.allowedHeaders) {
-            headers.set('Access-Control-Allow-Headers', 
-                Array.isArray(cors.allowedHeaders) ? cors.allowedHeaders.join(', ') : cors.allowedHeaders);
+            headers.set(
+                'Access-Control-Allow-Headers',
+                Array.isArray(cors.allowedHeaders)
+                    ? cors.allowedHeaders.join(', ')
+                    : cors.allowedHeaders
+            );
         }
 
         // Handle Access-Control-Expose-Headers
         if (cors.exposedHeaders) {
-            headers.set('Access-Control-Expose-Headers', 
-                Array.isArray(cors.exposedHeaders) ? cors.exposedHeaders.join(', ') : cors.exposedHeaders);
+            headers.set(
+                'Access-Control-Expose-Headers',
+                Array.isArray(cors.exposedHeaders)
+                    ? cors.exposedHeaders.join(', ')
+                    : cors.exposedHeaders
+            );
         }
 
         // Handle Access-Control-Allow-Credentials
@@ -169,11 +194,11 @@ export class Server {
         }
 
         headers.set('X-Powered-By', 'eSportsApp');
-        
+
         return new Response(response.body, {
             status: response.status,
             statusText: response.statusText,
-            headers
+            headers,
         });
     }
 
@@ -210,21 +235,35 @@ export class Server {
                         return this.handleCorsPreflightRequest(request);
                     }
 
+                    if (this.options.config?.session) {
+                        const sessionId = await generateSessionId();
+                        server.upgrade(request, {
+                            headers: {
+                                'Set-Cookie': `SessionId=${sessionId}`,
+                            },
+                        });
+                    }
+
                     // Handle favicon requests
-                    if (request.url.endsWith('/favicon.ico') && this.options.favicon) {
+                    if (
+                        request.url.endsWith('/favicon.ico') &&
+                        this.options.favicon
+                    ) {
                         try {
                             // Read the favicon file
-                            const icon = await Bun.file(this.options.favicon).arrayBuffer();
+                            const icon = await Bun.file(
+                                this.options.favicon
+                            ).arrayBuffer();
                             const buffer = Buffer.from(icon);
-                            
+
                             // Create response with appropriate headers
                             return new Response(buffer, {
                                 status: 200,
                                 headers: {
                                     'Content-Type': 'image/x-icon',
                                     'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
-                                    'ETag': `W/"${buffer.length.toString(16)}"`,
-                                }
+                                    ETag: `W/"${buffer.length.toString(16)}"`,
+                                },
                             });
                         } catch (error) {
                             console.error('Error serving favicon:', error);
@@ -285,13 +324,16 @@ export class Server {
                     const eSportsAppRes =
                         new HttpResponse() as unknown as apiResponse;
 
-                    const response = await handler(eSportsAppReq, eSportsAppRes);
-                    
+                    const response = await handler(
+                        eSportsAppReq,
+                        eSportsAppRes
+                    );
+
                     // Add CORS headers to the response if configured
                     if (this.options.cors) {
                         return this.addCorsHeaders(response, request);
                     }
-                    
+
                     return response;
                 } catch (error) {
                     console.error('Error in fetch handler:', error);
@@ -385,4 +427,7 @@ export class Server {
             );
         }
     }
+}
+function generateSessionId() {
+    return crypto.randomUUID();
 }
