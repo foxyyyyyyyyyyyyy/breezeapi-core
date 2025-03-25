@@ -406,7 +406,35 @@ export interface RouteDefinition {
      * containing the OpenAPI metadata for that method.
      */
     openapi?: openapi;
+
+    /**
+     * Configuration for the route.
+     */
+    config: RouteConfig;
 }
+
+export interface RouteConfig {
+    middleware?: Array<Middleware> | Record<string, MiddlewareDefinition>;
+    guards?: Array<Middleware> | Record<string, GuardDefinition>;
+    [key: string]: any; // Allow for other configuration options
+}
+
+export interface MiddlewareDefinition {
+    handler: ConfigurableMiddleware;
+    options?: any;
+}
+
+export interface GuardDefinition {
+    handler: ConfigurableMiddleware;
+    options?: any;
+}
+
+export type ConfigurableMiddleware = (
+    request: Request,
+    response: Response,
+    next: () => Promise<Response>,
+    config?: any
+) => Promise<Response>;
 
 /**
  * Define a type for the route schema.

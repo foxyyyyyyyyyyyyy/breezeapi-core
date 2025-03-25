@@ -145,7 +145,7 @@ export class ApiRouter {
      * @returns {Promise<void>} A promise that resolves when the module is loaded and inserted.
      * @throws {Error} If the route module fails to load or is invalid.
      */
-    private async loadRouteModule(
+        private async loadRouteModule(
         entryPath: string,
         relativePath: string
     ): Promise<void> {
@@ -154,28 +154,131 @@ export class ApiRouter {
             console.info('Loading route:', routePath);
             const modulePath = path.resolve(entryPath);
             const routeModule = await import(modulePath);
-
+    
             const handlers: { [method: string]: RequestHandler } = {};
             for (const method of HTTP_METHODS) {
                 if (typeof routeModule[method] === 'function') {
                     handlers[method] = routeModule[method];
                 }
             }
-
+    
+            // Process route configuration
+            const routeConfig = routeModule.config || {};
+            
+            // Process middleware
+            let middlewareArray: Middleware[] = [];
+            
+            // Add middleware from the middleware array (legacy support)
+            if (Array.isArray(routeModule.middleware)) {
+                middlewareArray = [...routeModule.middleware];
+            }
+            
+            // Add middleware from route config
+            if (routeConfig.middleware) {
+                const configMiddleware = this.processMiddlewareConfig(routeConfig.middleware);
+                middlewareArray = [...middlewareArray, ...configMiddleware];
+            }
+            
+            // Process guards
+            let guardsArray: Middleware[] = [];
+            if (routeConfig.guards) {
+                guardsArray = this.processGuardsConfig(routeConfig.guards);
+            }
+            
+            // Combine guards and middleware (guards run first)
+            const combinedMiddleware = [...guardsArray, ...middlewareArray];
+    
             const routeDef: RouteDefinition = {
                 path: routePath,
                 handlers,
-                middleware: routeModule.middleware as Middleware[],
+                middleware: combinedMiddleware,
                 schema: routeModule.schema,
                 openapi: routeModule.openapi,
+                config: routeConfig,
             };
-
+    
             this.insertRoute(routeDef);
         } catch (error) {
             throw new Error(
                 `Failed to load route module '${entryPath}': ${String(error)}`
             );
         }
+    }
+    
+    /**
+     * Processes middleware configuration and returns an array of middleware functions
+     * @param middlewareConfig The middleware configuration object or array
+     * @returns An array of middleware functions
+     */
+    private processMiddlewareConfig(middlewareConfig: any): Middleware[] {
+        const middlewareArray: Middleware[] = [];
+        
+        if (Array.isArray(middlewareConfig)) {
+            // If it's already an array, use it directly
+            return middlewareConfig;
+        }
+        
+        // Process object-style middleware config
+        for (const [key, middleware] of Object.entries(middlewareConfig)) {
+            if (typeof middleware === 'function') {
+                // Simple middleware function
+                middlewareArray.push(middleware as Middleware);
+            } else if (typeof middleware === 'object') {
+                // Middleware with configuration
+                const handler = middleware.handler;
+                const config = middleware.options || {};
+                
+                if (typeof handler === 'function') {
+                    // Create a configured middleware function
+                    const configuredMiddleware: Middleware = async (req, res, next) => {
+                        // Pass the config to the middleware
+                        return handler(req, res, next, config);
+                    };
+                    
+                    middlewareArray.push(configuredMiddleware);
+                }
+            }
+        }
+        
+        return middlewareArray;
+    }
+    
+    /**
+     * Processes guards configuration and returns an array of guard middleware functions
+     * @param guardsConfig The guards configuration object or array
+     * @returns An array of guard middleware functions
+     */
+    private processGuardsConfig(guardsConfig: any): Middleware[] {
+        const guardsArray: Middleware[] = [];
+        
+        if (Array.isArray(guardsConfig)) {
+            // If it's already an array, use it directly
+            return guardsConfig;
+        }
+        
+        // Process object-style guards config
+        for (const [key, guard] of Object.entries(guardsConfig)) {
+            if (typeof guard === 'function') {
+                // Simple guard function
+                guardsArray.push(guard as Middleware);
+            } else if (typeof guard === 'object') {
+                // Guard with configuration
+                const handler = guard.handler;
+                const config = guard.options || {};
+                
+                if (typeof handler === 'function') {
+                    // Create a configured guard function
+                    const configuredGuard: Middleware = async (req, res, next) => {
+                        // Pass the config to the guard
+                        return handler(req, res, next, config);
+                    };
+                    
+                    guardsArray.push(configuredGuard);
+                }
+            }
+        }
+        
+        return guardsArray;
     }
 
     /**
