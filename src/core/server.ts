@@ -48,10 +48,10 @@ export class Server {
             // eSportsApp's fetch handler
             fetch: async (request: Request) => {
                 try {
-                    // Handle CORS preflight requests
+                    /* Handle CORS preflight requests
                     if (request.method === 'OPTIONS' && this.options.cors) {
                         return this.handleCorsPreflightRequest(request);
-                    }
+                    }*/
 
                     
 
@@ -230,19 +230,11 @@ export class Server {
             port,
             fetch: async (request: Request, server) => {
                 try {
-                    // Handle CORS preflight requests
+                    /* Handle CORS preflight requests
                     if (request.method === 'OPTIONS' && this.options.cors) {
                         return this.handleCorsPreflightRequest(request);
-                    }
+                    }*/
 
-                    if (this.options.config?.session) {
-                        const sessionId = await generateSessionId();
-                        server.upgrade(request, {
-                            headers: {
-                                'Set-Cookie': `SessionId=${sessionId}`,
-                            },
-                        });
-                    }
 
                     // Handle favicon requests
                     if (
@@ -428,6 +420,4 @@ export class Server {
         }
     }
 }
-function generateSessionId() {
-    return crypto.randomUUID();
-}
+

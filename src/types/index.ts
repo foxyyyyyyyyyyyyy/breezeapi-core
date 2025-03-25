@@ -178,6 +178,11 @@ export interface apiRequest<
      * This is an easy check to see if it has session or not.
      */
     hassession: boolean;
+
+    /**
+     * Method to save session
+     */
+    saveSession: () => void;
 }
 
 export interface apiResponse {
