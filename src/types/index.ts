@@ -373,6 +373,16 @@ export type Middleware = (
     next: apiNext
 ) => Promise<Response>;
 
+/**
+ * Middleware/guard function that can receive configuration options
+ */
+export type ConfigurableMiddleware = (
+    request: apiRequest,
+    response: apiResponse,
+    next: apiNext,
+    config?: any
+) => Promise<Response>;
+
 export interface RouteDefinition {
     /**
      * The path of the route.
@@ -413,28 +423,62 @@ export interface RouteDefinition {
     config: RouteConfig;
 }
 
+
+/**
+ * Configuration for a route
+ */
 export interface RouteConfig {
+    /**
+     * Middleware to be applied to this specific route
+     * Can be an array of middleware functions or a record of named middleware with configuration
+     */
     middleware?: Array<Middleware> | Record<string, MiddlewareDefinition>;
+    
+    /**
+     * Guards to be applied to this specific route (run before middleware)
+     * Can be an array of guard functions or a record of named guards with configuration
+     */
     guards?: Array<Middleware> | Record<string, GuardDefinition>;
-    [key: string]: any; // Allow for other configuration options
+    
+    /**
+     * Allow for other configuration options
+     */
+    [key: string]: any;
 }
 
+/**
+ * Definition for a configurable middleware with options
+ */
 export interface MiddlewareDefinition {
+    /**
+     * The middleware handler function
+     */
     handler: ConfigurableMiddleware;
+    
+    /**
+     * Configuration options to be passed to the middleware
+     */
     options?: any;
 }
 
+/**
+ * Definition for a configurable guard with options
+ */
 export interface GuardDefinition {
+    /**
+     * The guard handler function
+     */
     handler: ConfigurableMiddleware;
+    
+    /**
+     * Configuration options to be passed to the guard
+     */
     options?: any;
 }
 
-export type ConfigurableMiddleware = (
-    request: Request,
-    response: Response,
-    next: () => Promise<Response>,
-    config?: any
-) => Promise<Response>;
+
+
+
 
 /**
  * Define a type for the route schema.

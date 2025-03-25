@@ -12,7 +12,10 @@ import {
 
 // Import types
 import type {
+    ConfigurableMiddleware,
+    GuardDefinition,
     Middleware,
+    MiddlewareDefinition,
     RequestHandler,
     RouteDefinition,
     TrieNode,
@@ -210,7 +213,7 @@ export class ApiRouter {
      * @param middlewareConfig The middleware configuration object or array
      * @returns An array of middleware functions
      */
-    private processMiddlewareConfig(middlewareConfig: any): Middleware[] {
+    private processMiddlewareConfig(middlewareConfig: Middleware[] | Record<string, Middleware | MiddlewareDefinition>): Middleware[] {
         const middlewareArray: Middleware[] = [];
         
         if (Array.isArray(middlewareConfig)) {
@@ -223,16 +226,17 @@ export class ApiRouter {
             if (typeof middleware === 'function') {
                 // Simple middleware function
                 middlewareArray.push(middleware as Middleware);
-            } else if (typeof middleware === 'object') {
-                // Middleware with configuration
-                const handler = middleware.handler;
-                const config = middleware.options || {};
+            } else if (typeof middleware === 'object' && middleware) {
+                // Need to cast to MiddlewareDefinition to access properties safely
+                const middlewareDef = middleware as MiddlewareDefinition;
+                const handler = middlewareDef.handler;
+                const config = middlewareDef.options || {};
                 
                 if (typeof handler === 'function') {
                     // Create a configured middleware function
                     const configuredMiddleware: Middleware = async (req, res, next) => {
                         // Pass the config to the middleware
-                        return handler(req, res, next, config);
+                        return (handler as ConfigurableMiddleware)(req, res, next, config);
                     };
                     
                     middlewareArray.push(configuredMiddleware);
@@ -248,7 +252,7 @@ export class ApiRouter {
      * @param guardsConfig The guards configuration object or array
      * @returns An array of guard middleware functions
      */
-    private processGuardsConfig(guardsConfig: any): Middleware[] {
+    private processGuardsConfig(guardsConfig: Middleware[] | Record<string, Middleware | GuardDefinition>): Middleware[] {
         const guardsArray: Middleware[] = [];
         
         if (Array.isArray(guardsConfig)) {
@@ -261,16 +265,17 @@ export class ApiRouter {
             if (typeof guard === 'function') {
                 // Simple guard function
                 guardsArray.push(guard as Middleware);
-            } else if (typeof guard === 'object') {
-                // Guard with configuration
-                const handler = guard.handler;
-                const config = guard.options || {};
+            } else if (typeof guard === 'object' && guard !== null) {
+                // Need to cast to GuardDefinition to access properties safely
+                const guardDef = guard as GuardDefinition;
+                const handler = guardDef.handler;
+                const config = guardDef.options || {};
                 
                 if (typeof handler === 'function') {
                     // Create a configured guard function
                     const configuredGuard: Middleware = async (req, res, next) => {
                         // Pass the config to the guard
-                        return handler(req, res, next, config);
+                        return (handler as ConfigurableMiddleware)(req, res, next, config);
                     };
                     
                     guardsArray.push(configuredGuard);
