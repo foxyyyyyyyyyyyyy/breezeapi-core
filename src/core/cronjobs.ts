@@ -88,6 +88,7 @@ function registerCronJob(jobName: string, cronModule: CronModule) {
 }
 
 export async function initializeCronJobs() {
+    //TODO: fix this
   const cronJobsDir = join(import.meta.dir, 'cronjobs');
   // Check if directory exists using Bun.file
   const dirFile = file(cronJobsDir);
