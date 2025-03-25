@@ -1,4 +1,6 @@
+import type{ CookieOptions } from '@Types';
 export class HttpResponse {
+    
     /**
      * The status code of the response, which defaults to 200 (OK). This
      * property can be modified before calling build() to construct the
@@ -147,4 +149,79 @@ export class HttpResponse {
             headers: this._headers,
         });
     }
+
+    /**
+     * Sets the response body to a JSON error message.
+     * @param message - The error message.
+     * @param status - The HTTP status code (default 500).
+     * @returns The final Response object.
+     */
+    public error(message: string, status: number = 500): Response {
+        this.status(status);
+        return this.json({
+            success: false,
+            error: message
+        });
+    }
+
+    /**
+     * Sets the response body to a JSON success message.
+     * @param message - The success message.
+     * @param status - The HTTP status code (default 200).
+     * @returns The final Response object.
+     */
+    public success(message: string, status: number = 200): Response {
+        this.status(status);
+        return this.json({
+            success: true,
+            message: message
+        });
+    }
+
+        /**
+     * Set a cookie in the response.
+     * @param name - The cookie name.
+     * @param value - The cookie value.
+     * @param options - Optional cookie settings.
+     * @returns The current instance for chaining.
+     */
+        public cookie(name: string, value: string, options?: CookieOptions): this {
+            const parts: string[] = [`${name}=${encodeURIComponent(value)}`];
+    
+            if (options) {
+                if (options.domain) {
+                    parts.push(`Domain=${options.domain}`);
+                }
+                
+                if (options.path) {
+                    parts.push(`Path=${options.path}`);
+                } else {
+                    parts.push('Path=/');
+                }
+                
+                if (options.maxAge) {
+                    parts.push(`Max-Age=${options.maxAge}`);
+                }
+                
+                if (options.expires) {
+                    parts.push(`Expires=${options.expires.toUTCString()}`);
+                }
+            
+                if (options.sameSite) {
+                    parts.push(`SameSite=${options.sameSite}`);
+                }
+                
+                if (options.secure) {
+                    parts.push('Secure');
+                }
+                
+                if (options.httpOnly) {
+                    parts.push('HttpOnly');
+                }
+            }
+    
+            const cookieString = parts.join('; ');
+            this.header('Set-Cookie', cookieString);
+            return this;
+        }
 }

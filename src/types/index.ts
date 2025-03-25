@@ -265,6 +265,68 @@ export interface apiResponse {
      * @returns A new Response object.
      */
     original(body?: BodyInit | null, init?: ResponseInit): Response;
+
+    /**
+     * Sets the response body to a JSON error message.
+     * @param message - The error message.
+     * @param status - The HTTP status code (default 500).
+     * @returns The final Response object.
+     */
+    error(message: string, status?: number): Response;
+
+    /**
+     * Sets the response body to a JSON success message.
+     * @param message - The success message.
+     * @param status - The HTTP status code (default 200).
+     * @returns The final Response object.
+     */
+    success(message: string, status?: number): Response;
+
+    /**
+     * Set a cookie in the response.
+     * @param name - The cookie name.
+     * @param value - The cookie value.
+     * @param options - Optional cookie settings.
+     * @returns The current instance for chaining.
+     */
+    cookie(name: string, value: string, options?: CookieOptions): this;
+}
+
+export interface CookieOptions {
+    /**
+     * The domain for the cookie.
+     */
+    domain?: string;
+
+    /**
+     * The path for the cookie.
+     */
+    path?: string;
+
+    /**
+     * The maximum age of the cookie in seconds.
+     */
+    maxAge?: number;
+
+    /**
+     * The expiration date of the cookie.
+     */
+    expires?: Date;
+
+    /**
+     * The same-site policy of the cookie.
+     */
+    sameSite?: 'strict' | 'lax' | 'none';
+
+    /**
+     * The secure flag of the cookie.
+     */
+    secure?: boolean;
+
+    /**
+     * The HttpOnly flag of the cookie.
+     */
+    httpOnly?: boolean;
 }
 
 /**
