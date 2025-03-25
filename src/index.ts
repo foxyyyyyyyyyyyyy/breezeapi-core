@@ -20,6 +20,7 @@ import type {
     RequestHandler,
 } from '@Types';
 import type { HTMLBundle } from 'bun';
+import { initializeCronJobs } from '@core/cronjobs';
 
 export class API {
     private server: Server;
@@ -27,7 +28,6 @@ export class API {
     private pageRouter?: PageRouter;
     private globalMiddleware: Middleware[] = [];
     private wsRouter?: WebSocketRouter;
-
 
     /**
      * Constructor for the API class.
@@ -50,12 +50,12 @@ export class API {
             this.pageRouter = new PageRouter(options.pageDir, 'pages');
         }
 
-          // Initialize WebSocket router
-          if (options.socketDir) {
+        // Initialize WebSocket router
+        if (options.socketDir) {
             this.wsRouter = new WebSocketRouter(options.socketDir, 'socket');
         }
 
-        if(options.cookie){
+        if (options.cookie) {
             this.addGlobalMiddleware(cookieParseMiddleware);
         }
 
@@ -84,7 +84,10 @@ export class API {
     async serve(port: number = 4000, cb?: () => void): Promise<void> {
         // File-based routing mode
         const routes: { [key: string]: HTMLBundle | RequestHandler } = {};
-
+        // Initialize cron jobs
+        initializeCronJobs().catch((error) => {
+            console.error('Failed to initialize cron jobs:', error);
+        });
         // Handle page routes
         if (this.pageRouter) {
             // Load Page routes
@@ -96,113 +99,113 @@ export class API {
                 });
             }
         }
-        if(this.wsRouter && this.apiRouter){
+        if (this.wsRouter && this.apiRouter) {
             // Load WebSocket routes
             await this.wsRouter.loadRoutes();
             // Start the server
-             // Load API routes
-             await this.apiRouter.loadRoutes();
-             // Start the server
-             this.server.startSocket(
-                 routes,
-                 async (req: apiRequest, res: apiResponse) => {
-                     // Create URL object
-                     const url = new URL(req.url);
- 
-                     // Check if the request is for /openapi.json
-                     if (url.pathname === '/openapi.json') {
-                         if (this.apiRouter) {
-                             // Generate OpenAPI document
-                             const doc = generateOpenAPIDocument(
-                                 this.apiRouter,
-                                 this.options
-                             );
-                             // Return it as JSON
-                             return res.json(doc);
-                         } else {
-                             // Return a descriptive error if router is not available
-                             return res.status(500).json({
-                                 error: 'API Router not configured',
-                                 message:
-                                     'Please provide an apiDir option when initializing the eSportsApp instance to enable OpenAPI documentation.',
-                             });
-                         }
-                     }
- 
-                     // Serve the Swagger UI at /docs
-                     if (url.pathname === '/docs') {
-                         return res.html(swaggerHtml);
-                     }
- 
-                     // Get the route and params for the current request
-                     const { route, params } = this.apiRouter!.resolve(req);
- 
-                     if (!route) {
-                         // Return a 404 if no route is found
-                         return res
-                             .status(404)
-                             .json({ error: 'Route not found' });
-                     }
- 
-                     // Add params to the request
-                     req.params = params;
- 
-                     // Get the handler for the current HTTP method
-                     const method = req.method.toUpperCase();
-                     const handler = route.handlers[method];
-                     if (!handler) {
-                         // Return a 405 if no handler is found
-                         return res
-                             .status(405)
-                             .json({ error: 'Method Not Allowed' });
-                     }
- 
-                     /**
-                      * Build the middleware composition chain.
-                      * 1. Compose the Route-Specific Chain
-                      * 2. Insert Validation Middleware (if a schema exists)
-                      * 3. Insert Global Middleware
-                      * 4. Execute the handler
-                      */
- 
-                     // 1. Compose the Route-Specific Chain
-                     let routeChain = async () => handler(req, res);
-                     if (route.middleware && route.middleware.length > 0) {
-                         // Wrap route-specific middleware (in reverse order to preserve order of execution)
-                         for (const mw of route.middleware.slice().reverse()) {
-                             const next: apiNext = routeChain;
-                             routeChain = async () => mw(req, res, next);
-                         }
-                     }
- 
-                     // 2. Insert Validation Middleware (if a schema exists)
-                     let composedChain = routeChain;
-                     if (route.schema) {
-                         const validationMw = createValidationMiddleware(
-                             route.schema
-                         );
-                         composedChain = async () =>
-                             validationMw(req, res, routeChain);
-                     }
- 
-                     // 3. Wrap Global Middleware (in reverse order so that the first-added runs first)
-                     let finalHandler = composedChain;
-                     if (this.globalMiddleware.length > 0) {
-                         for (const mw of this.globalMiddleware
-                             .slice()
-                             .reverse()) {
-                             const next: apiNext = finalHandler;
-                             finalHandler = async () => mw(req, res, next);
-                         }
-                     }
- 
-                     // Execute the full chain
-                     return await finalHandler();
-                 },
-                 this.wsRouter,
-                 port,
-                 cb
-             );
+            // Load API routes
+            await this.apiRouter.loadRoutes();
+            // Start the server
+            this.server.startSocket(
+                routes,
+                async (req: apiRequest, res: apiResponse) => {
+                    // Create URL object
+                    const url = new URL(req.url);
+
+                    // Check if the request is for /openapi.json
+                    if (url.pathname === '/openapi.json') {
+                        if (this.apiRouter) {
+                            // Generate OpenAPI document
+                            const doc = generateOpenAPIDocument(
+                                this.apiRouter,
+                                this.options
+                            );
+                            // Return it as JSON
+                            return res.json(doc);
+                        } else {
+                            // Return a descriptive error if router is not available
+                            return res.status(500).json({
+                                error: 'API Router not configured',
+                                message:
+                                    'Please provide an apiDir option when initializing the eSportsApp instance to enable OpenAPI documentation.',
+                            });
+                        }
+                    }
+
+                    // Serve the Swagger UI at /docs
+                    if (url.pathname === '/docs') {
+                        return res.html(swaggerHtml);
+                    }
+
+                    // Get the route and params for the current request
+                    const { route, params } = this.apiRouter!.resolve(req);
+
+                    if (!route) {
+                        // Return a 404 if no route is found
+                        return res
+                            .status(404)
+                            .json({ error: 'Route not found' });
+                    }
+
+                    // Add params to the request
+                    req.params = params;
+
+                    // Get the handler for the current HTTP method
+                    const method = req.method.toUpperCase();
+                    const handler = route.handlers[method];
+                    if (!handler) {
+                        // Return a 405 if no handler is found
+                        return res
+                            .status(405)
+                            .json({ error: 'Method Not Allowed' });
+                    }
+
+                    /**
+                     * Build the middleware composition chain.
+                     * 1. Compose the Route-Specific Chain
+                     * 2. Insert Validation Middleware (if a schema exists)
+                     * 3. Insert Global Middleware
+                     * 4. Execute the handler
+                     */
+
+                    // 1. Compose the Route-Specific Chain
+                    let routeChain = async () => handler(req, res);
+                    if (route.middleware && route.middleware.length > 0) {
+                        // Wrap route-specific middleware (in reverse order to preserve order of execution)
+                        for (const mw of route.middleware.slice().reverse()) {
+                            const next: apiNext = routeChain;
+                            routeChain = async () => mw(req, res, next);
+                        }
+                    }
+
+                    // 2. Insert Validation Middleware (if a schema exists)
+                    let composedChain = routeChain;
+                    if (route.schema) {
+                        const validationMw = createValidationMiddleware(
+                            route.schema
+                        );
+                        composedChain = async () =>
+                            validationMw(req, res, routeChain);
+                    }
+
+                    // 3. Wrap Global Middleware (in reverse order so that the first-added runs first)
+                    let finalHandler = composedChain;
+                    if (this.globalMiddleware.length > 0) {
+                        for (const mw of this.globalMiddleware
+                            .slice()
+                            .reverse()) {
+                            const next: apiNext = finalHandler;
+                            finalHandler = async () => mw(req, res, next);
+                        }
+                    }
+
+                    // Execute the full chain
+                    return await finalHandler();
+                },
+                this.wsRouter,
+                port,
+                cb
+            );
         } else if (this.apiRouter) {
             // Load API routes
             await this.apiRouter.loadRoutes();

@@ -15,8 +15,8 @@
     "test": "bun test",
     "dev": "bun run examples/file-base-static-page-routing-app/index.ts"
   },
-
   "dependencies": {
+    "cron": "^4.1.0",
     "zod": "^3.24.2",
     "zod-to-json-schema": "^3.24.4"
   },
