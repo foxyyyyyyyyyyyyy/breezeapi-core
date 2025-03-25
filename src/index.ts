@@ -5,6 +5,7 @@ import { PageRouter } from '@core/page-router.js';
 import { generateOpenAPIDocument } from '@core/openapi.js';
 import { swaggerHtml } from '@core/swagger-ui.js';
 import { WebSocketRouter } from '@core/ws-router';
+export { WebSocketRouter } from '@core/ws-router';
 
 // Import middleware
 import { createValidationMiddleware } from '@middleware/validator.js';
@@ -337,4 +338,7 @@ export type {
     apiNext,
     Middleware,
     openapi,
+    WebSocketData,
+    WebSocketHandler,
+    WebSocketRouteDefinition,
 } from '@Types';

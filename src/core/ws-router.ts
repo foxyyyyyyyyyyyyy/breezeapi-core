@@ -1,20 +1,8 @@
 import { readdir } from 'fs/promises';
 import * as path from 'path';
-import type{ WebSocketData } from '@Types';
+import type{ WebSocketData, WebSocketHandler, WebSocketRouteDefinition } from '@Types';
 
-// WebSocket handler interface
-export interface WebSocketHandler {
-    open?: (ws: WebSocket & { data: WebSocketData }, id?: string) => void;
-    message?: (ws: WebSocket & { data: WebSocketData }, message: string | Buffer, id?: string) => void;
-    close?: (ws: WebSocket & { data: WebSocketData }, code: number, reason: string, id?: string) => void;
-    drain?: (ws: WebSocket & { data: WebSocketData }, id?: string) => void;
-}
 
-// WebSocket route definition
-export interface WebSocketRouteDefinition {
-    path: string;
-    handler: WebSocketHandler;
-}
 
 export class WebSocketRouter {
     private routes: WebSocketRouteDefinition[] = [];

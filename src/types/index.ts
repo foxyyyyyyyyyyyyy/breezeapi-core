@@ -545,13 +545,7 @@ export interface ServerOptions {
     socketDir?: string;
 }
 
-// Add WebSocket handler types
-export interface WebSocketHandler {
-    open?: (ws: WebSocket, id?: string) => void;
-    message?: (ws: WebSocket, message: string | Buffer, id?: string) => void;
-    close?: (ws: WebSocket, code: number, reason: string, id?: string) => void;
-    drain?: (ws: WebSocket, id?: string) => void;
-}
+
 
 export interface WebSocketRouteDefinition {
     path: string;
@@ -563,3 +557,17 @@ export interface WebSocketData {
     groupPath?: string;
     createdAt: number;
   }
+
+  // WebSocket handler interface
+export interface WebSocketHandler {
+    open?: (ws: WebSocket & { data: WebSocketData }, id?: string) => void;
+    message?: (ws: WebSocket & { data: WebSocketData }, message: string | Buffer, id?: string) => void;
+    close?: (ws: WebSocket & { data: WebSocketData }, code: number, reason: string, id?: string) => void;
+    drain?: (ws: WebSocket & { data: WebSocketData }, id?: string) => void;
+}
+
+// WebSocket route definition
+export interface WebSocketRouteDefinition {
+    path: string;
+    handler: WebSocketHandler;
+}
