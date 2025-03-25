@@ -53,6 +53,28 @@ export class Server {
                         return this.handleCorsPreflightRequest(request);
                     }
 
+                    // Handle favicon requests
+                    if (request.url.endsWith('/favicon.ico') && this.options.favicon) {
+                        try {
+                            // Read the favicon file
+                            const icon = await Bun.file(this.options.favicon).arrayBuffer();
+                            const buffer = Buffer.from(icon);
+                            
+                            // Create response with appropriate headers
+                            return new Response(buffer, {
+                                status: 200,
+                                headers: {
+                                    'Content-Type': 'image/x-icon',
+                                    'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
+                                    'ETag': `W/"${buffer.length.toString(16)}"`,
+                                }
+                            });
+                        } catch (error) {
+                            console.error('Error serving favicon:', error);
+                            return new Response(null, { status: 404 });
+                        }
+                    }
+
                     // Wrap the native Request with HttpRequest to get a apiRequest
                     const eSportsAppReq = new HttpRequest(
                         request
@@ -186,6 +208,28 @@ export class Server {
                     // Handle CORS preflight requests
                     if (request.method === 'OPTIONS' && this.options.cors) {
                         return this.handleCorsPreflightRequest(request);
+                    }
+
+                    // Handle favicon requests
+                    if (request.url.endsWith('/favicon.ico') && this.options.favicon) {
+                        try {
+                            // Read the favicon file
+                            const icon = await Bun.file(this.options.favicon).arrayBuffer();
+                            const buffer = Buffer.from(icon);
+                            
+                            // Create response with appropriate headers
+                            return new Response(buffer, {
+                                status: 200,
+                                headers: {
+                                    'Content-Type': 'image/x-icon',
+                                    'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
+                                    'ETag': `W/"${buffer.length.toString(16)}"`,
+                                }
+                            });
+                        } catch (error) {
+                            console.error('Error serving favicon:', error);
+                            return new Response(null, { status: 404 });
+                        }
                     }
 
                     // Check if it's a WebSocket upgrade request

@@ -93,6 +93,20 @@ export interface ServerOptions {
          */
         maxAge?: number;
     };
+
+    config?:{
+        /**
+         * Use Session middleware for the API. This is an optional property that can be used
+         * to enable session management for the API.
+         */
+        session?: boolean;
+
+        /**
+         * Use Cookie middleware for the API. This is an optional property that can be used
+         * to enable cookie management for the API.
+         */
+        cookie?: boolean;
+    }
 }
 
 type DefaultRequestProperties = {
