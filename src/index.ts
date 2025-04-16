@@ -9,7 +9,6 @@ export { WebSocketRouter } from '@core/ws-router';
 
 // Import middleware
 import { createValidationMiddleware } from '@middleware/validator.js';
-import { cookieParseMiddleware } from '@middleware/cookiesparse';
 
 // Import types
 import type {
@@ -23,7 +22,7 @@ import type {
 import type { HTMLBundle } from 'bun';
 import { initializeCronJobs } from '@core/cronjobs';
 
-export class API {
+export class BreezeAPI {
     private server: Server;
     private apiRouter?: ApiRouter;
     private pageRouter?: PageRouter;
@@ -53,12 +52,9 @@ export class API {
 
         // Initialize WebSocket router
         if (options.socketDir) {
-            this.wsRouter = new WebSocketRouter(options.socketDir, 'socket');
+            this.wsRouter = new WebSocketRouter(options.socketDir, 'socket'); 
         }
 
-        if (options.cookie) {
-            this.addGlobalMiddleware(cookieParseMiddleware);
-        }
 
         // Add global middleware
         if (options.globalMiddleware) {
@@ -323,6 +319,16 @@ export class API {
                 cb
             );
         }
+    }
+}
+
+// Deprecated: Use BreezeAPI instead.
+export class API extends BreezeAPI {
+    constructor(options: ServerOptions) {
+        console.warn(
+            '[DEPRECATED] The API class is deprecated since version 0.1.3. Please use BreezeAPI instead.'
+        );
+        super(options);
     }
 }
 

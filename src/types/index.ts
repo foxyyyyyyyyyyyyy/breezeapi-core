@@ -123,6 +123,7 @@ type DefaultRequestProperties = {
 export interface apiRequest<
     RequestValidatedProperties extends DefaultRequestProperties = DefaultRequestProperties
 > extends Request {
+    [x: string]: any;
     /**
      * Provides helper to access query parameters as URLSearchParams.
      * This is a convenience property that allows you to access the query
@@ -155,29 +156,7 @@ export interface apiRequest<
      */
     validated: RequestValidatedProperties;
 
-    /**
-     * Contains the parsed cookies from the request.
-     * This is a convenience property that allows you to access the cookies
-     */
-    cookies: Record<string, string>;
 
-    /**
-     * Contains the session data from the request.
-     * This is a convenience property that allows you to access the session data
-     * from the request.
-     */
-    session: Record<string, string>;
-
-    /**
-     * This is an easy check to see if it has cookies or not.
-     * 
-     */
-    hascookies: boolean;
-
-    /**
-     * This is an easy check to see if it has session or not.
-     */
-    hassession: boolean;
 
     /**
      * Method to save session
