@@ -322,7 +322,9 @@ export class BreezeAPI {
     }
 }
 
-// Deprecated: Use BreezeAPI instead.
+/**
+ * @deprecated Use BreezeAPI instead. This class will be removed in a future version.
+ */
 export class API extends BreezeAPI {
     constructor(options: ServerOptions) {
         console.warn(
