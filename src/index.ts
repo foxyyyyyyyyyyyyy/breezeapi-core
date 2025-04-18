@@ -52,7 +52,7 @@ export class BreezeAPI {
 
         // Initialize WebSocket router
         if (options.socketDir) {
-            this.wsRouter = new WebSocketRouter(options.socketDir, 'socket'); 
+            this.wsRouter = new WebSocketRouter(options.socketDir, 'socket');
         }
 
 
@@ -166,10 +166,23 @@ export class BreezeAPI {
                      */
 
                     // 1. Compose the Route-Specific Chain
+                    const methodKey = req.method.toLowerCase(); // 'get', 'post', etc.
+                    let methodMiddleware: Middleware[] = [];
+
+                    // Prefer config[method].middleware if present
+                    if (route.config && route.config[methodKey] && Array.isArray(route.config[methodKey].middleware)) {
+                        methodMiddleware = route.config[methodKey].middleware;
+                    } else if (route.config && Array.isArray(route.config.middleware)) {
+                        // Fallback to config.middleware (applies to all methods)
+                        methodMiddleware = route.config.middleware;
+                    } else if (route.middleware && Array.isArray(route.middleware)) {
+                        // Fallback to legacy route.middleware
+                        methodMiddleware = route.middleware;
+                    }
+
                     let routeChain = async () => handler(req, res);
-                    if (route.middleware && route.middleware.length > 0) {
-                        // Wrap route-specific middleware (in reverse order to preserve order of execution)
-                        for (const mw of route.middleware.slice().reverse()) {
+                    if (methodMiddleware.length > 0) {
+                        for (const mw of methodMiddleware.slice().reverse()) {
                             const next: apiNext = routeChain;
                             routeChain = async () => mw(req, res, next);
                         }
@@ -270,10 +283,23 @@ export class BreezeAPI {
                      */
 
                     // 1. Compose the Route-Specific Chain
+                    const methodKey = req.method.toLowerCase(); // 'get', 'post', etc.
+                    let methodMiddleware: Middleware[] = [];
+
+                    // Prefer config[method].middleware if present
+                    if (route.config && route.config[methodKey] && Array.isArray(route.config[methodKey].middleware)) {
+                        methodMiddleware = route.config[methodKey].middleware;
+                    } else if (route.config && Array.isArray(route.config.middleware)) {
+                        // Fallback to config.middleware (applies to all methods)
+                        methodMiddleware = route.config.middleware;
+                    } else if (route.middleware && Array.isArray(route.middleware)) {
+                        // Fallback to legacy route.middleware
+                        methodMiddleware = route.middleware;
+                    }
+
                     let routeChain = async () => handler(req, res);
-                    if (route.middleware && route.middleware.length > 0) {
-                        // Wrap route-specific middleware (in reverse order to preserve order of execution)
-                        for (const mw of route.middleware.slice().reverse()) {
+                    if (methodMiddleware.length > 0) {
+                        for (const mw of methodMiddleware.slice().reverse()) {
                             const next: apiNext = routeChain;
                             routeChain = async () => mw(req, res, next);
                         }
@@ -313,12 +339,21 @@ export class BreezeAPI {
                 async (_: apiRequest, res: apiResponse) => {
                     return res
                         .status(200)
-                        .json({ message: 'Hello from eSportsApp-api!' });
+                        .json({ message: 'Hello from BreezeAPI!' });
                 },
                 port,
                 cb
             );
         }
+    }
+
+    /**
+     * Register global middleware (like Express).
+     * @param mw - The middleware function to add.
+     */
+    use(mw: Middleware) {
+        this.addGlobalMiddleware(mw);
+        return this;
     }
 }
 
