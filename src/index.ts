@@ -6,6 +6,7 @@ import { generateOpenAPIDocument } from '@core/openapi.js';
 import { swaggerHtml } from '@core/swagger-ui.js';
 import { WebSocketRouter } from '@core/ws-router';
 export { WebSocketRouter } from '@core/ws-router';
+export { Config } from '@core/config';
 
 // Import middleware
 import { createValidationMiddleware } from '@middleware/validator.js';
@@ -354,6 +355,24 @@ export class BreezeAPI {
     use(mw: Middleware) {
         this.addGlobalMiddleware(mw);
         return this;
+    }
+
+    private static configs: Map<string, any> = new Map();
+
+    /**
+     * Register or retrieve a global config for plugins/middleware.
+     * @param keyOrConfig - A string key or a config object with a unique key property.
+     * @param value - The config value (if using string key).
+     */
+    static config<T = any>(keyOrConfig: string | { key: string; value: T }, value?: T): void | T {
+        if (typeof keyOrConfig === 'string') {
+            if (typeof value !== 'undefined') {
+                BreezeAPI.configs.set(keyOrConfig, value);
+            }
+            return BreezeAPI.configs.get(keyOrConfig);
+        } else {
+            BreezeAPI.configs.set(keyOrConfig.key, keyOrConfig.value);
+        }
     }
 }
 
