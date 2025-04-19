@@ -156,12 +156,110 @@ export interface apiRequest<
      */
     validated: RequestValidatedProperties;
 
-
-
     /**
      * Method to save session
      */
     saveSession: () => void;
+
+    /**
+     * Node.js/Bun compatibility: Listen for events (e.g., 'close', 'error').
+     */
+    on?(event: string, listener: (...args: any[]) => void): void;
+
+    /**
+     * Node.js/Bun compatibility: Pipe the request to a writable stream.
+     */
+    pipe?(destination: any, options?: { end?: boolean }): any;
+
+    /**
+     * Bun: Returns the request body as a ReadableStream.
+     */
+    body: ReadableStream<Uint8Array> | null;
+
+    /**
+     * Bun: Returns the request body as an ArrayBuffer.
+     */
+    arrayBuffer(): Promise<ArrayBuffer>;
+
+    /**
+     * Bun: Returns the request body as a Blob.
+     */
+    blob(): Promise<Blob>;
+
+    /**
+     * Bun: Returns the request body as FormData.
+     */
+    formData(): Promise<FormData>;
+
+    /**
+     * Bun: Returns the request body as JSON.
+     */
+    json<T = any>(): Promise<T>;
+
+    /**
+     * Bun: Returns the request body as text.
+     */
+    text(): Promise<string>;
+
+    /**
+     * Bun: Returns the request headers as a Headers object.
+     */
+    headers: Headers;
+
+    /**
+     * Bun: The HTTP method.
+     */
+    method: string;
+
+    /**
+     * Bun: The request URL.
+     */
+    url: string;
+
+    /**
+     * Bun: The request signal (for aborting).
+     */
+    signal: AbortSignal;
+
+    /**
+     * Bun: The request credentials.
+     */
+    credentials: RequestCredentials;
+
+    /**
+     * Bun: The request referrer.
+     */
+    referrer: string;
+
+    /**
+     * Bun: The request referrer policy.
+     */
+    referrerPolicy: ReferrerPolicy;
+
+    /**
+     * Bun: The request mode.
+     */
+    mode: RequestMode;
+
+    /**
+     * Bun: The request cache.
+     */
+    cache: RequestCache;
+
+    /**
+     * Bun: The request redirect.
+     */
+    redirect: RequestRedirect;
+
+    /**
+     * Bun: The request integrity.
+     */
+    integrity: string;
+
+    /**
+     * Bun: The request keepalive.
+     */
+    keepalive: boolean;
 }
 
 export interface apiResponse {
@@ -274,6 +372,52 @@ export interface apiResponse {
      * @returns The current instance for chaining.
      */
     cookie(name: string, value: string, options?: CookieOptions): this;
+
+    /**
+     * Bun/Node.js: Write data to the response stream (for SSE, etc.).
+     * If supported by the underlying server.
+     */
+    send(data: string | Uint8Array, close?: boolean): this;
+
+    /**
+     * Bun/Node.js: Flush the response headers (for SSE, etc.).
+     */
+    flush?(): void;
+
+    /**
+     * Bun/Node.js: End the response (for streaming/SSE).
+     */
+    end?(): void;
+
+    /**
+     * Bun/Node.js: Write data to the response stream (alias for send).
+     */
+    write?(data: string | Uint8Array): void;
+
+    /**
+     * Bun/Node.js: Pipe a readable stream to the response.
+     */
+    pipe?(stream: ReadableStream<any>): void;
+
+    /**
+     * Bun: Returns the response as a Response object.
+     */
+    toResponse?(): Response;
+
+    /**
+     * Bun: Returns the response headers as a Headers object.
+     */
+    headers?: Headers;
+
+    /**
+     * Bun: The response status code.
+     */
+    statusCode?: number;
+
+    /**
+     * Bun: The response URL.
+     */
+    url?: string;
 }
 
 export interface CookieOptions {
@@ -550,3 +694,11 @@ export interface WebSocketRouteDefinition {
     path: string;
     handler: WebSocketHandler;
 }
+
+/**
+ * Type for the SSE send function.
+ * Sends a message to the client as an SSE event.
+ * @param data - The data to send (object or string).
+ * @param event - Optional event name.
+ */
+export type SseSend = (data: any, event?: string) => void;

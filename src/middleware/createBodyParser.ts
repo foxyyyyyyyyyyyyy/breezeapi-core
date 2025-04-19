@@ -1,9 +1,9 @@
 import type { apiNext, apiRequest, apiResponse } from "@Types";
 
-// Extending the Request interface to allow body property assignment
+// Extending the Request interface to allow parsedBody property assignment
 declare global {
   interface Request {
-    body?: any;
+    parsedBody?: any;
     rawBody?: string;
   }
 }
@@ -66,7 +66,7 @@ export const createBodyParserMiddleware = (options: BodyParserOptions = {}) => {
           }
           
           // Make the parsed body available and restore the original request's body
-          req.body = JSON.parse(text);
+          req.parsedBody = JSON.parse(text);
           req.rawBody = text;
           
         } catch (error: unknown) {
@@ -81,12 +81,13 @@ export const createBodyParserMiddleware = (options: BodyParserOptions = {}) => {
       else if (contentType.includes('application/x-www-form-urlencoded')) {
         try {
           const formData = await req.formData();
-          req.body = {};
+          const parsed: Record<string, any> = {};
           
           // Convert FormData to object
           formData.forEach((value, key) => {
-            req.body[key] = value;
+            parsed[key] = value;
           });
+          req.parsedBody = parsed;
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           return new Response(`Error parsing form data: ${errorMessage}`, { 

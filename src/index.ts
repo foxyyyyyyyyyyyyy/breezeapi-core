@@ -38,8 +38,9 @@ export class BreezeAPI {
      * - apiDir: The directory path to load API routes from.
      * - pageDir: The directory path to load page routes from.
      * - middleware: An array of global middleware functions.
+     * - sseCors: (optional) CORS config for SSE routes only.
      */
-    constructor(private options: ServerOptions) {
+    constructor(private options: ServerOptions & { sseCors?: { origin?: string; methods?: string; headers?: string; credentials?: boolean } }) {
         this.server = new Server(options);
         // Initialize API router
         if (options.apiDir) {
@@ -80,256 +81,37 @@ export class BreezeAPI {
      * @returns A Promise that resolves when the server has started listening.
      */
     async serve(port: number = 4000, cb?: () => void): Promise<void> {
-        // File-based routing mode
         const routes: { [key: string]: HTMLBundle | RequestHandler } = {};
-        // Initialize cron jobs
         initializeCronJobs().catch((error) => {
             console.error('Failed to initialize cron jobs:', error);
         });
+
         // Handle page routes
         if (this.pageRouter) {
-            // Load Page routes
             await this.pageRouter.loadPages();
-            // If there are any page routes, add them to the routes object
             if (this.pageRouter.pages.length > 0) {
                 this.pageRouter.pages.forEach((page) => {
                     routes[page.path] = page.handler;
                 });
             }
         }
+
+        // If both WebSocket and API routers are present
         if (this.wsRouter && this.apiRouter) {
-            // Load WebSocket routes
             await this.wsRouter.loadRoutes();
-            // Start the server
-            // Load API routes
             await this.apiRouter.loadRoutes();
-            // Start the server
             this.server.startSocket(
                 routes,
-                async (req: apiRequest, res: apiResponse) => {
-                    // Create URL object
-                    const url = new URL(req.url);
-
-                    // Check if the request is for /openapi.json
-                    if (url.pathname === '/openapi.json') {
-                        if (this.apiRouter) {
-                            // Generate OpenAPI document
-                            const doc = generateOpenAPIDocument(
-                                this.apiRouter,
-                                this.options
-                            );
-                            // Return it as JSON
-                            return res.json(doc);
-                        } else {
-                            // Return a descriptive error if router is not available
-                            return res.status(500).json({
-                                error: 'API Router not configured',
-                                message:
-                                    'Please provide an apiDir option when initializing the eSportsApp instance to enable OpenAPI documentation.',
-                            });
-                        }
-                    }
-
-                    // Serve the Swagger UI at /docs
-                    if (url.pathname === '/docs') {
-                        return res.html(swaggerHtml);
-                    }
-
-                    // Get the route and params for the current request
-                    const { route, params } = this.apiRouter!.resolve(req);
-
-                    if (!route) {
-                        // Return a 404 if no route is found
-                        return res
-                            .status(404)
-                            .json({ error: 'Route not found' });
-                    }
-
-                    // Add params to the request
-                    req.params = params;
-
-                    // Get the handler for the current HTTP method
-                    const method = req.method.toUpperCase();
-                    const handler = route.handlers[method];
-                    if (!handler) {
-                        // Return a 405 if no handler is found
-                        return res
-                            .status(405)
-                            .json({ error: 'Method Not Allowed' });
-                    }
-
-                    /**
-                     * Build the middleware composition chain.
-                     * 1. Compose the Route-Specific Chain
-                     * 2. Insert Validation Middleware (if a schema exists)
-                     * 3. Insert Global Middleware
-                     * 4. Execute the handler
-                     */
-
-                    // 1. Compose the Route-Specific Chain
-                    const methodKey = req.method.toLowerCase(); // 'get', 'post', etc.
-                    let methodMiddleware: Middleware[] = [];
-
-                    // Prefer config[method].middleware if present
-                    if (route.config && route.config[methodKey] && Array.isArray(route.config[methodKey].middleware)) {
-                        methodMiddleware = route.config[methodKey].middleware;
-                    } else if (route.config && Array.isArray(route.config.middleware)) {
-                        // Fallback to config.middleware (applies to all methods)
-                        methodMiddleware = route.config.middleware;
-                    } else if (route.middleware && Array.isArray(route.middleware)) {
-                        // Fallback to legacy route.middleware
-                        methodMiddleware = route.middleware;
-                    }
-
-                    let routeChain = async () => handler(req, res);
-                    if (methodMiddleware.length > 0) {
-                        for (const mw of methodMiddleware.slice().reverse()) {
-                            const next: apiNext = routeChain;
-                            routeChain = async () => mw(req, res, next);
-                        }
-                    }
-
-                    // 2. Insert Validation Middleware (if a schema exists)
-                    let composedChain = routeChain;
-                    if (route.schema) {
-                        const validationMw = createValidationMiddleware(
-                            route.schema
-                        );
-                        composedChain = async () =>
-                            validationMw(req, res, routeChain);
-                    }
-
-                    // 3. Wrap Global Middleware (in reverse order so that the first-added runs first)
-                    let finalHandler = composedChain;
-                    if (this.globalMiddleware.length > 0) {
-                        for (const mw of this.globalMiddleware
-                            .slice()
-                            .reverse()) {
-                            const next: apiNext = finalHandler;
-                            finalHandler = async () => mw(req, res, next);
-                        }
-                    }
-
-                    // Execute the full chain
-                    return await finalHandler();
-                },
+                this._createApiHandler() as RequestHandler,
                 this.wsRouter,
                 port,
                 cb
             );
         } else if (this.apiRouter) {
-            // Load API routes
             await this.apiRouter.loadRoutes();
-            // Start the server
             this.server.start(
                 routes,
-                async (req: apiRequest, res: apiResponse) => {
-                    // Create URL object
-                    const url = new URL(req.url);
-
-                    // Check if the request is for /openapi.json
-                    if (url.pathname === '/openapi.json') {
-                        if (this.apiRouter) {
-                            // Generate OpenAPI document
-                            const doc = generateOpenAPIDocument(
-                                this.apiRouter,
-                                this.options
-                            );
-                            // Return it as JSON
-                            return res.json(doc);
-                        } else {
-                            // Return a descriptive error if router is not available
-                            return res.status(500).json({
-                                error: 'API Router not configured',
-                                message:
-                                    'Please provide an apiDir option when initializing the eSportsApp instance to enable OpenAPI documentation.',
-                            });
-                        }
-                    }
-
-                    // Serve the Swagger UI at /docs
-                    if (url.pathname === '/docs') {
-                        return res.html(swaggerHtml);
-                    }
-
-                    // Get the route and params for the current request
-                    const { route, params } = this.apiRouter!.resolve(req);
-
-                    if (!route) {
-                        // Return a 404 if no route is found
-                        return res
-                            .status(404)
-                            .json({ error: 'Route not found' });
-                    }
-
-                    // Add params to the request
-                    req.params = params;
-
-                    // Get the handler for the current HTTP method
-                    const method = req.method.toUpperCase();
-                    const handler = route.handlers[method];
-                    if (!handler) {
-                        // Return a 405 if no handler is found
-                        return res
-                            .status(405)
-                            .json({ error: 'Method Not Allowed' });
-                    }
-
-                    /**
-                     * Build the middleware composition chain.
-                     * 1. Compose the Route-Specific Chain
-                     * 2. Insert Validation Middleware (if a schema exists)
-                     * 3. Insert Global Middleware
-                     * 4. Execute the handler
-                     */
-
-                    // 1. Compose the Route-Specific Chain
-                    const methodKey = req.method.toLowerCase(); // 'get', 'post', etc.
-                    let methodMiddleware: Middleware[] = [];
-
-                    // Prefer config[method].middleware if present
-                    if (route.config && route.config[methodKey] && Array.isArray(route.config[methodKey].middleware)) {
-                        methodMiddleware = route.config[methodKey].middleware;
-                    } else if (route.config && Array.isArray(route.config.middleware)) {
-                        // Fallback to config.middleware (applies to all methods)
-                        methodMiddleware = route.config.middleware;
-                    } else if (route.middleware && Array.isArray(route.middleware)) {
-                        // Fallback to legacy route.middleware
-                        methodMiddleware = route.middleware;
-                    }
-
-                    let routeChain = async () => handler(req, res);
-                    if (methodMiddleware.length > 0) {
-                        for (const mw of methodMiddleware.slice().reverse()) {
-                            const next: apiNext = routeChain;
-                            routeChain = async () => mw(req, res, next);
-                        }
-                    }
-
-                    // 2. Insert Validation Middleware (if a schema exists)
-                    let composedChain = routeChain;
-                    if (route.schema) {
-                        const validationMw = createValidationMiddleware(
-                            route.schema
-                        );
-                        composedChain = async () =>
-                            validationMw(req, res, routeChain);
-                    }
-
-                    // 3. Wrap Global Middleware (in reverse order so that the first-added runs first)
-                    let finalHandler = composedChain;
-                    if (this.globalMiddleware.length > 0) {
-                        for (const mw of this.globalMiddleware
-                            .slice()
-                            .reverse()) {
-                            const next: apiNext = finalHandler;
-                            finalHandler = async () => mw(req, res, next);
-                        }
-                    }
-
-                    // Execute the full chain
-                    return await finalHandler();
-                },
+                this._createApiHandler() as RequestHandler,
                 port,
                 cb
             );
@@ -346,6 +128,195 @@ export class BreezeAPI {
                 cb
             );
         }
+    }
+
+    /**
+     * Internal method to create the API handler for both HTTP and WebSocket servers.
+     */
+    private _createApiHandler(): RequestHandler {
+        return async (req: apiRequest, res: apiResponse) => {
+            // If no API router, fallback to 404
+            if (!this.apiRouter) {
+                return res.status(404).json({ error: 'API Router not configured' });
+            }
+
+            const url = new URL(req.url);
+
+            // Check if the request is for /openapi.json
+            if (url.pathname === '/openapi.json') {
+                const doc = generateOpenAPIDocument(this.apiRouter, this.options);
+                return res.json(doc);
+            }
+
+            // Serve the Swagger UI at /docs
+            if (url.pathname === '/docs') {
+                return res.html(swaggerHtml);
+            }
+
+            // Get the route and params for the current request
+            const { route, params } = this.apiRouter.resolve(req as apiRequest);
+
+            if (!route) {
+                return res.status(404).json({ error: 'Route not found' });
+            }
+
+            req.params = params;
+
+            // Get the handler for the current HTTP method
+            const method = req.method.toUpperCase();
+            let handler = route.handlers[method];
+
+            // --- SSE Support ---
+            // If GET and handler has SSE or sse property, mark as SSE route
+            const isSSE =
+                method === 'GET' &&
+                (typeof route.handlers.SSE === 'function' || typeof route.handlers.sse === 'function');
+            const sseHandler = isSSE
+                ? (route.handlers.SSE || route.handlers.sse)
+                : undefined;
+
+            // If this is an SSE route and no GET handler, use the SSE handler as the main handler
+            if (isSSE && !handler && sseHandler) {
+                handler = sseHandler;
+            }
+
+            if (!handler) {
+                return res.status(405).json({ error: 'Method Not Allowed' });
+            }
+
+            /**
+             * Build the middleware composition chain.
+             * 1. Compose the Route-Specific Chain
+             * 2. Insert Validation Middleware (if a schema exists)
+             * 3. Insert Global Middleware
+             * 4. Execute the handler
+             */
+
+            // 1. Compose the Route-Specific Chain
+            const methodKey = req.method.toLowerCase();
+            let methodMiddleware: Middleware[] = [];
+
+            if (route.config && route.config[methodKey] && Array.isArray(route.config[methodKey].middleware)) {
+                methodMiddleware = route.config[methodKey].middleware;
+            } else if (route.config && Array.isArray(route.config.middleware)) {
+                methodMiddleware = route.config.middleware;
+            } else if (route.middleware && Array.isArray(route.middleware)) {
+                methodMiddleware = route.middleware;
+            }
+
+            // Compose the handler chain
+            let routeChain = async () => {
+                // If this is an SSE route, handle SSE after all middleware
+                if (isSSE && sseHandler) {
+                    await this._handleSSE(sseHandler, req, res);
+                    // Return a dummy Response to satisfy the type
+                    return new Response(null, { status: 200 });
+                }
+                // Otherwise, normal handler
+                return handler(req, res);
+            };
+
+            if (methodMiddleware.length > 0) {
+                for (const mw of methodMiddleware.slice().reverse()) {
+                    const next: apiNext = routeChain;
+                    routeChain = async () => mw(req, res, next);
+                }
+            }
+
+            // 2. Insert Validation Middleware (if a schema exists)
+            let composedChain = routeChain;
+            if (route.schema) {
+                const validationMw = createValidationMiddleware(route.schema);
+                composedChain = async () => validationMw(req, res, routeChain);
+            }
+
+            // 3. Wrap Global Middleware (in reverse order so that the first-added runs first)
+            let finalHandler = composedChain;
+            if (this.globalMiddleware.length > 0) {
+                for (const mw of this.globalMiddleware.slice().reverse()) {
+                    const next: apiNext = finalHandler;
+                    finalHandler = async () => mw(req, res, next);
+                }
+            }
+
+            // Execute the full chain
+            return await finalHandler();
+        };
+    }
+
+    /**
+     * Handles Server-Sent Events (SSE) for GET requests with an SSE handler.
+     * The SSE handler should return a ReadableStream or use the provided send function.
+     * @param handler - The SSE handler function.
+     * @param req - The API request.
+     * @param res - The API response.
+     */
+    private async _handleSSE(handler: RequestHandler, req: apiRequest, res: apiResponse) {
+        // Set SSE headers using .header()
+        res.header('Content-Type', 'text/event-stream');
+        res.header('Cache-Control', 'no-cache');
+        res.header('Connection', 'keep-alive');
+
+        // --- SSE-specific CORS support ---
+        const sseCors = this.options.sseCors;
+        if (sseCors) {
+            res.header('Access-Control-Allow-Origin', sseCors.origin ?? '*');
+            if (sseCors.methods) res.header('Access-Control-Allow-Methods', sseCors.methods);
+            if (sseCors.headers) res.header('Access-Control-Allow-Headers', sseCors.headers);
+            if (typeof sseCors.credentials === 'boolean') res.header('Access-Control-Allow-Credentials', String(sseCors.credentials));
+        } else {
+            res.header('Access-Control-Allow-Origin', '*');
+        }
+
+        let closed = false;
+
+        // Provide a simple send function for convenience
+        const send = (data: any, event?: string) => {
+            if (closed) return;
+            let payload = '';
+            if (event) payload += `event: ${event}\n`;
+            payload += `data: ${typeof data === 'string' ? data : JSON.stringify(data)}\n\n`;
+            res.send(payload, false); // false = do not close connection
+        };
+
+        // Handler signature: (req, res, send?) or returns a ReadableStream
+        // Only pass send if handler expects it (fixes TS2554)
+        let maybeStream: any;
+        if (handler.length === 3) {
+            maybeStream = await (handler as any)(req, res, send);
+        } else {
+            maybeStream = await handler(req, res);
+        }
+
+        // If handler returned a ReadableStream, pipe it as SSE
+        if (
+            maybeStream &&
+            typeof maybeStream === 'object' &&
+            typeof maybeStream.getReader === 'function'
+        ) {
+            const stream = maybeStream as ReadableStream;
+            const reader = stream.getReader();
+            const pump = async () => {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    // Assume value is already a string or Uint8Array
+                    res.send(typeof value === 'string' ? value : new TextDecoder().decode(value), false);
+                }
+                res.send('', true); // close connection
+            };
+            pump().catch(() => res.send('', true));
+        } else {
+            // If handler used send, keep connection open until closed by client
+            if (typeof req.on === 'function') {
+                req.on('close', () => {
+                    closed = true;
+                    res.send('', true); // close connection
+                });
+            }
+        }
+        // Always return a dummy Response to satisfy the type
+        return new Response(null, { status: 200 });
     }
 
     /**
