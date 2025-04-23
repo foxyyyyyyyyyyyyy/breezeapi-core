@@ -1,6 +1,6 @@
 {
   "name": "@breezeapi/core",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "module": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -10,7 +10,6 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json",
-    "build2": "tsc --noEmitOnError --project tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "test": "bun test",
     "dev": "bun run examples/file-base-static-page-routing-app/index.ts"
   },

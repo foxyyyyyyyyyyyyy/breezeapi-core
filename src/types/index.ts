@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { BunRequest } from 'bun';
 
 export interface ServerOptions {
     /**
@@ -99,7 +100,7 @@ export interface ServerOptions {
         maxAge?: number;
     };
 
-    config?:{
+    config?: {
         /**
          * Use Session middleware for the API. This is an optional property that can be used
          * to enable session management for the API.
@@ -260,6 +261,14 @@ export interface apiRequest<
      * Bun: The request keepalive.
      */
     keepalive: boolean;
+
+    /**
+     * BreezeAPI: Middleware storage for the request.
+     * This property is used to store middleware-specific data that can be
+     * accessed by routes and middleware functions during the request handling process.
+     */
+    middleware?: Record<string, any>;
+
 }
 
 export interface apiResponse {
@@ -556,13 +565,13 @@ export interface RouteConfig {
      * Can be an array of middleware functions or a record of named middleware with configuration
      */
     middleware?: Array<Middleware> | Record<string, MiddlewareDefinition>;
-    
+
     /**
      * Guards to be applied to this specific route (run before middleware)
      * Can be an array of guard functions or a record of named guards with configuration
      */
     guards?: Array<Middleware> | Record<string, GuardDefinition>;
-    
+
     /**
      * Allow for other configuration options
      */
@@ -577,7 +586,7 @@ export interface MiddlewareDefinition {
      * The middleware handler function
      */
     handler: ConfigurableMiddleware;
-    
+
     /**
      * Configuration options to be passed to the middleware
      */
@@ -592,7 +601,7 @@ export interface GuardDefinition {
      * The guard handler function
      */
     handler: ConfigurableMiddleware;
-    
+
     /**
      * Configuration options to be passed to the guard
      */
@@ -660,7 +669,7 @@ export interface TrieNode {
 // Add WebSocket types to the ServerOptions interface
 export interface ServerOptions {
     // Existing properties...
-    
+
     /**
      * The directory path to load WebSocket routes from.
      * If not specified, no WebSocket routes are loaded.
@@ -679,9 +688,9 @@ export interface WebSocketData {
     id?: string;
     groupPath?: string;
     createdAt: number;
-  }
+}
 
-  // WebSocket handler interface
+// WebSocket handler interface
 export interface WebSocketHandler {
     open?: (ws: WebSocket & { data: WebSocketData }, id?: string) => void;
     message?: (ws: WebSocket & { data: WebSocketData }, message: string | Buffer, id?: string) => void;
