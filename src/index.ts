@@ -21,7 +21,6 @@ import type {
     RequestHandler,
 } from '@Types';
 import type { HTMLBundle } from 'bun';
-import { initializeCronJobs } from '@core/cronjobs';
 function getCORSHeaders(
     corsOptions: Required<NonNullable<ServerOptions['cors']>>,
     req: apiRequest,
@@ -173,9 +172,7 @@ export class BreezeAPI {
      */
     async serve(port: number = 4000, cb?: () => void): Promise<void> {
         const routes: { [key: string]: HTMLBundle | RequestHandler } = {};
-        initializeCronJobs().catch((error) => {
-            console.error('Failed to initialize cron jobs:', error);
-        });
+       
 
         // Handle page routes
         if (this.pageRouter) {
