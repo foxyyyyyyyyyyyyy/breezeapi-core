@@ -22,6 +22,56 @@ import type {
 } from '@Types';
 import type { HTMLBundle } from 'bun';
 import { initializeCronJobs } from '@core/cronjobs';
+function getCORSHeaders(
+    corsOptions: Required<NonNullable<ServerOptions['cors']>>,
+    req: apiRequest,
+    alwaysAllowedHeaders: string[] = []
+): Headers {
+    const headers = new Headers();
+    // Compute allowed origin
+    let allowOrigin = Array.isArray(corsOptions.origin)
+        ? corsOptions.origin.join(', ')
+        : (corsOptions.origin === true ? '*' : corsOptions.origin);
+    if (corsOptions.credentials && (allowOrigin === '*' || !allowOrigin)) {
+        const reqOrigin = req.headers.get('origin');
+        if (reqOrigin) allowOrigin = reqOrigin;
+    }
+    headers.set('Access-Control-Allow-Origin', allowOrigin || '*');
+    headers.set(
+        'Access-Control-Allow-Methods',
+        Array.isArray(corsOptions.methods)
+            ? corsOptions.methods.join(', ')
+            : corsOptions.methods
+    );
+
+    // Compose allowed headers, always including alwaysAllowedHeaders
+    let allowedHeaders = Array.isArray(corsOptions.allowedHeaders)
+        ? corsOptions.allowedHeaders.join(', ')
+        : corsOptions.allowedHeaders;
+    // Merge with alwaysAllowedHeaders, deduplicated
+    const allowedSet = new Set(
+        (allowedHeaders ? allowedHeaders.split(',').map(h => h.trim()) : [])
+            .concat(alwaysAllowedHeaders)
+            .filter(Boolean)
+    );
+    headers.set(
+        'Access-Control-Allow-Headers',
+        Array.from(allowedSet).join(', ')
+    );
+
+    if (corsOptions.exposedHeaders)
+        headers.set(
+            'Access-Control-Expose-Headers',
+            Array.isArray(corsOptions.exposedHeaders)
+                ? corsOptions.exposedHeaders.join(', ')
+                : corsOptions.exposedHeaders
+        );
+    if (corsOptions.credentials)
+        headers.set('Access-Control-Allow-Credentials', 'true');
+    if (corsOptions.maxAge)
+        headers.set('Access-Control-Max-Age', String(corsOptions.maxAge));
+    return headers;
+}
 
 export class BreezeAPI {
     private server: Server;
@@ -29,6 +79,8 @@ export class BreezeAPI {
     private pageRouter?: PageRouter;
     private globalMiddleware: Middleware[] = [];
     private wsRouter?: WebSocketRouter;
+    private corsOptions: Required<NonNullable<ServerOptions['cors']>>;
+    private alwaysAllowedHeaders: string[];
 
     /**
      * Constructor for the API class.
@@ -39,8 +91,25 @@ export class BreezeAPI {
      * - pageDir: The directory path to load page routes from.
      * - middleware: An array of global middleware functions.
      * - sseCors: (optional) CORS config for SSE routes only.
+     * - alwaysAllowedHeaders: (optional) Array of headers always allowed in CORS (default: ['api-key'])
      */
-    constructor(private options: ServerOptions & { sseCors?: { origin?: string; methods?: string; headers?: string; credentials?: boolean } }) {
+    constructor(
+        private options: ServerOptions & {
+            sseCors?: { origin?: string; methods?: string; headers?: string; credentials?: boolean },
+            alwaysAllowedHeaders?: string[]
+        }
+    ) {
+        this.corsOptions = {
+            origin: '*',
+            methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+            allowedHeaders: 'Content-Type, Authorization',
+            exposedHeaders: '',
+            credentials: true,
+            maxAge: 86400,
+            ...(options.cors || {}),
+        };
+        this.alwaysAllowedHeaders = options.alwaysAllowedHeaders ?? ['api-key'];
+
         this.server = new Server(options);
         // Initialize API router
         if (options.apiDir) {
@@ -57,13 +126,35 @@ export class BreezeAPI {
             this.wsRouter = new WebSocketRouter(options.socketDir, 'socket');
         }
 
-
         // Add global middleware
         if (options.globalMiddleware) {
             options.globalMiddleware.forEach((mw) =>
                 this.addGlobalMiddleware(mw)
             );
         }
+
+    }
+
+    private _wrapWithCORS(handler: RequestHandler): RequestHandler {
+        return async (req, res) => {
+            // Handle preflight OPTIONS
+            if (req.method === 'OPTIONS') {
+                const corsHeaders = getCORSHeaders(this.corsOptions, req, this.alwaysAllowedHeaders);
+                return new Response('OK', { status: 204, headers: corsHeaders });
+            }
+            // Call the real handler
+            const response = await handler(req, res);
+            // If already a Response, clone and add CORS headers
+            if (response instanceof Response) {
+                const corsHeaders = getCORSHeaders(this.corsOptions, req, this.alwaysAllowedHeaders);
+                // Merge headers
+                const merged = new Headers(response.headers);
+                corsHeaders.forEach((v, k) => merged.set(k, v));
+                return new Response(response.body, { ...response, headers: merged });
+            }
+            // If not a Response, just return as is (should not happen)
+            return response;
+        };
     }
 
     /**
@@ -102,7 +193,7 @@ export class BreezeAPI {
             await this.apiRouter.loadRoutes();
             this.server.startSocket(
                 routes,
-                this._createApiHandler() as RequestHandler,
+                this._wrapWithCORS(this._createApiHandler() as RequestHandler),
                 this.wsRouter,
                 port,
                 cb
@@ -111,23 +202,21 @@ export class BreezeAPI {
             await this.apiRouter.loadRoutes();
             this.server.start(
                 routes,
-                this._createApiHandler() as RequestHandler,
+                this._wrapWithCORS(this._createApiHandler() as RequestHandler),
                 port,
                 cb
             );
         } else {
-            // Fallback to default handler if no router is provided
             this.server.start(
                 undefined,
-                async (_: apiRequest, res: apiResponse) => {
-                    return res
-                        .status(200)
-                        .json({ message: 'Hello from BreezeAPI!' });
-                },
+                this._wrapWithCORS(async (_: apiRequest, res: apiResponse) => {
+                    return res.status(200).json({ message: 'Hello from BreezeAPI!' });
+                }),
                 port,
                 cb
             );
         }
+    
     }
 
     /**
