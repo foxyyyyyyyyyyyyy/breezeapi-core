@@ -221,6 +221,17 @@ export class BreezeAPI {
      */
     private _createApiHandler(): RequestHandler {
         return async (req: apiRequest, res: apiResponse) => {
+            // --- Add Bun cookies support if enabled ---
+            if (this.options.cookie) {
+                // Bun automatically attaches cookies to the request object in Bun.serve,
+                // but if not, we can polyfill using Bun's Cookie API.
+                // If already present, do nothing.
+                if (!('cookies' in req)) {
+                    // @ts-ignore
+                    req.cookies = (Bun as any).cookies?.(req) || new (Bun as any).CookieJar(req);
+                }
+            }
+
             // If no API router, fallback to 404
             if (!this.apiRouter) {
                 return res.status(404).json({ error: 'API Router not configured' });

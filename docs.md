@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Breeze API** is a Bun-native, file-based API framework with built-in support for HTTP and WebSocket routes, Zod-based validation, OpenAPI/Swagger documentation, and a flexible middleware system. It is designed for rapid development, scalability, and developer ergonomics.
+**Breeze API** is a Bun-native, file-based API framework with built-in support for HTTP and WebSocket routes, Zod-based validation, OpenAPI/Swagger documentation, flexible middleware, and first-class cookie and CORS support. It is designed for rapid development, scalability, and developer ergonomics.
 
 ---
 
@@ -15,6 +15,7 @@
   - *Global Middleware*: Runs on every request.
   - *Route-Specific Middleware*: Defined per route file.
   - *Validation Middleware*: Auto-generated from Zod schemas.
+  - *Configurable Middleware/Guards*: Pass options to middleware/guards via route config.
 
 - **Zod Validation:**  
   Validate `params`, `query`, and `body` using Zod schemas. Errors are automatically handled.
@@ -24,6 +25,18 @@
 
 - **WebSocket Routing:**  
   File-based WebSocket endpoints with group management and event handlers.
+
+- **CORS Support:**  
+  Fine-grained CORS configuration per API instance, including allowed origins, headers, credentials, and max age.
+
+- **Cookie Support:**  
+  Native Bun-style cookie API (`req.cookies.get/set/delete`) for all API routes when enabled.
+
+- **SSE (Server-Sent Events):**  
+  Built-in support for SSE endpoints with CORS and streaming helpers.
+
+- **Global Config Registry:**  
+  Register and retrieve global config for plugins/middleware via `BreezeAPI.config()`.
 
 ---
 
@@ -76,6 +89,30 @@ export const schema = {
 
 export async function GET(req: apiRequest, res: apiResponse) {
   return res.json({ id: req.params.id });
+}
+```
+
+#### Cookie Support in Routes
+
+If you enable `cookie: true` in your API options, every `req` object in your route handlers will have a Bun-style `cookies` property:
+
+```ts
+export async function POST(req, res) {
+  // Read a cookie
+  const token = req.cookies.get("X-eSportsApp-Token");
+
+  // Set a cookie
+  req.cookies.set("X-eSportsApp-Token", "your-jwt-token", {
+    httpOnly: true,
+    secure: true,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+
+  // Delete a cookie
+  req.cookies.delete("X-eSportsApp-Token", { path: "/" });
+
+  return res.json({ ok: true });
 }
 ```
 
@@ -134,6 +171,24 @@ export const middleware = [
 ];
 ```
 
+### Configurable Middleware and Guards
+
+You can define middleware and guards with configuration options in your route's `config` export:
+
+```ts
+export const config = {
+  middleware: {
+    auth: {
+      handler: myAuthMiddleware,
+      options: { role: "admin" },
+    },
+  },
+  guards: [
+    myGuardMiddleware,
+  ],
+};
+```
+
 ---
 
 ## Validation
@@ -157,6 +212,44 @@ export const schema = {
 
 ---
 
+## CORS
+
+You can configure CORS globally for your API:
+
+```ts
+import { BreezeAPI } from 'eSportsApp-api';
+
+const api = new BreezeAPI({
+  // ...other options...
+  cors: {
+    origin: ["https://myapp.com", "http://localhost:3000"],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "api-key"],
+    credentials: true,
+    maxAge: 86400,
+  },
+});
+```
+
+You can also specify headers that are always allowed (e.g., `api-key`) via `alwaysAllowedHeaders`.
+
+---
+
+## SSE (Server-Sent Events)
+
+To create an SSE endpoint, export a `SSE` or `sse` handler in your route file:
+
+```ts
+export async function SSE(req, res, send) {
+  send({ message: "Hello SSE!" });
+  // ...send more events as needed...
+}
+```
+
+SSE routes automatically set appropriate headers and support CORS (with optional `sseCors` config).
+
+---
+
 ## OpenAPI & Swagger UI
 
 - Add an `openapi` export to your route file for custom docs metadata.
@@ -176,10 +269,19 @@ export const openapi = {
 
 ---
 
-## CLI Templates
+## Global Config Registry
 
-- See `cli/templates/route-example.ts` and `cli/templates/socket-template.ts` for ready-to-use route and socket templates.
-- Use these as a starting point for your own endpoints.
+You can register and retrieve global config for plugins/middleware:
+
+```ts
+import { BreezeAPI } from 'eSportsApp-api';
+
+// Set a config value
+BreezeAPI.config("myPlugin", { enabled: true });
+
+// Get a config value
+const pluginConfig = BreezeAPI.config("myPlugin");
+```
 
 ---
 
@@ -219,6 +321,21 @@ eSportsApp.serve(4000, () => {
 
 - **How do I customize OpenAPI docs?**  
   Export an `openapi` object from your route file.
+
+- **How do I use cookies in my routes?**  
+  Enable `cookie: true` in your API options. Then use `req.cookies.get/set/delete` in your handlers.
+
+- **How do I add configurable middleware or guards?**  
+  Use the `config` export in your route file with middleware/guards as objects with `handler` and `options`.
+
+- **How do I enable CORS for SSE endpoints?**  
+  Use the `sseCors` option in the API constructor.
+
+- **How do I register global config for plugins?**  
+  Use `BreezeAPI.config(key, value)` to set and `BreezeAPI.config(key)` to get.
+
+- **How do I use the new BreezeAPI class?**  
+  Use `BreezeAPI` instead of the deprecated `API` class.
 
 ---
 
