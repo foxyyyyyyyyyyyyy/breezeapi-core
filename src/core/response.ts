@@ -29,6 +29,81 @@ export class HttpResponse {
     }
 
     /**
+     * Set a header on the response.
+     * @param name - The header name.
+     * @param value - The header value.
+     * @returns The response object.
+     */
+    public setHeader(name: string, value: string): this {
+        this._headers.set(name, value);
+        return this;
+    }
+
+    /**
+     * Appends a header to the response. Unlike header/setHeader, this does not
+     * overwrite existing headers of the same name. Useful for Set-Cookie.
+     * @param name - The header name.
+     * @param value - The header value.
+     * @returns The response object.
+     */
+    public appendHeader(name: string, value: string): this {
+        this._headers.append(name, value);
+        return this;
+    }
+
+    /**
+     * Set a cookie in the response.
+     * @param name - The cookie name.
+     * @param value - The cookie value.
+     * @param options - Optional cookie settings.
+     * @returns The current instance for chaining.
+     */
+    public cookie(name: string, value: string, options?: CookieOptions): this {
+        const parts: string[] = [`${name}=${encodeURIComponent(value)}`];
+
+        if (options) {
+            if (options.domain) {
+                parts.push(`Domain=${options.domain}`);
+            }
+
+            if (options.path) {
+                parts.push(`Path=${options.path}`);
+            } else {
+                 // Add a default path if none is provided
+                parts.push('Path=/');
+            }
+
+            if (options.maxAge !== undefined) { // Check for undefined specifically
+                parts.push(`Max-Age=${options.maxAge}`);
+            }
+
+            if (options.expires) {
+                parts.push(`Expires=${options.expires.toUTCString()}`);
+            }
+
+            if (options.sameSite) {
+                parts.push(`SameSite=${options.sameSite}`);
+            }
+
+            if (options.secure) {
+                parts.push('Secure');
+            }
+
+            if (options.httpOnly) {
+                parts.push('HttpOnly');
+            }
+        }
+
+        const cookieString = parts.join('; ');
+        // *** CHANGE THIS LINE ***
+        // Use appendHeader instead of header/setHeader
+        this.appendHeader('Set-Cookie', cookieString);
+        return this;
+    }
+
+   
+
+    /**
      * Remove a header from the response.
      * @param name - The header name.
      * @returns The response object.
@@ -178,50 +253,5 @@ export class HttpResponse {
         });
     }
 
-        /**
-     * Set a cookie in the response.
-     * @param name - The cookie name.
-     * @param value - The cookie value.
-     * @param options - Optional cookie settings.
-     * @returns The current instance for chaining.
-     */
-        public cookie(name: string, value: string, options?: CookieOptions): this {
-            const parts: string[] = [`${name}=${encodeURIComponent(value)}`];
-    
-            if (options) {
-                if (options.domain) {
-                    parts.push(`Domain=${options.domain}`);
-                }
-                
-                if (options.path) {
-                    parts.push(`Path=${options.path}`);
-                } else {
-                    parts.push('Path=/');
-                }
-                
-                if (options.maxAge) {
-                    parts.push(`Max-Age=${options.maxAge}`);
-                }
-                
-                if (options.expires) {
-                    parts.push(`Expires=${options.expires.toUTCString()}`);
-                }
-            
-                if (options.sameSite) {
-                    parts.push(`SameSite=${options.sameSite}`);
-                }
-                
-                if (options.secure) {
-                    parts.push('Secure');
-                }
-                
-                if (options.httpOnly) {
-                    parts.push('HttpOnly');
-                }
-            }
-    
-            const cookieString = parts.join('; ');
-            this.header('Set-Cookie', cookieString);
-            return this;
-        }
+ 
 }

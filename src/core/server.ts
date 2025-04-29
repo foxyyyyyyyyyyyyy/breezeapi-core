@@ -38,7 +38,7 @@ export class Server {
      */
     public start(
         routes: { [key: string]: any } | undefined,
-        handler: RequestHandler,
+        handler: (request: Request) => Promise<Response>,
         port: number,
         cb?: () => void
     ): void {
@@ -53,7 +53,8 @@ export class Server {
                         return this.handleCorsPreflightRequest(request);
                     }*/
 
-                    
+   console.log('Request Headers:', request.headers);
+                    console.log('Cookie Header:', request.headers.get('Cookie'));
 
                     // Handle favicon requests
                     if (
@@ -82,20 +83,7 @@ export class Server {
                         }
                     }
 
-                    // Wrap the native Request with HttpRequest to get a apiRequest
-                    const eSportsAppReq = new HttpRequest(
-                        request
-                    ) as unknown as apiRequest;
-
-                    // Wrap the native Response with HttpResponse to get a apiResponse
-                    const eSportsAppRes =
-                        new HttpResponse() as unknown as apiResponse;
-
-                    // Invoke and return the handler with the wrapped requests and responses
-                    const response = await handler(
-                        eSportsAppReq,
-                        eSportsAppRes
-                    );
+                    const response = await handler(request);
 
                     // Add CORS headers to the response if configured
                     if (this.options.cors) {

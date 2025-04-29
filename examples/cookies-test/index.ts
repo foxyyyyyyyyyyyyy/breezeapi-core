@@ -1,11 +1,11 @@
 // Import stuff from eSportsApp-api
-import { eSportsApp, setDir } from '@src';
+import { BreezeAPI, setDir } from '@src';
 
 // Import middleware
 import { globalLogger } from './middleware/logger';
 
 // Create a new API instance with OpenAPI metadata and global middleware.
-const eSportsApp = new API({
+const eSportsApp = new BreezeAPI({
     title: 'Demo API',
     description:
         'This is a demo API demonstrating all available options in eSportsApp-api.',

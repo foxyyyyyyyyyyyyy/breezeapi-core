@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        button { margin: 5px; padding: 10px; }
+        #results { margin-top: 20px; padding: 10px; border: 1px solid #ccc; background-color: #f9f9f9; white-space: pre-wrap; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Cookie Test Page</h1>
+    <p>API Endpoint: <code id="apiUrl">/api/products</code></p>
+
+    <button onclick="sendRequest('GET')">GET Cookies</button>
+    <button onclick="sendRequest('POST')">POST (Set Cookies)</button>
+    <button onclick="sendRequest('DELETE')">DELETE Cookie</button>
+
+    <h2>Results:</h2>
+    <div id="results">Click a button to test...</div>
+
+    <script>
+        const apiUrlBase = 'http://localhost:4000'; // CHANGE PORT IF NEEDED
+        const apiPath = '/products';
+        const resultsDiv = document.getElementById('results');
+        document.getElementById('apiUrl').textContent = apiUrlBase + apiPath;
+
+        async function sendRequest(method) {
+            resultsDiv.textContent = `Sending ${method} request...`;
+            resultsDiv.classList.remove('error');
+
+            try {
+                const response = await fetch(apiUrlBase + apiPath, {
+                    method: method,
+                    // IMPORTANT: Include credentials to send/receive cookies cross-origin
+                    credentials: 'include',
+                    headers: {
+                        // Add any other headers your API might require, like 'Content-Type' for POST if sending data
+                        'Content-Type': 'application/json'
+                        // 'api-key': 'YOUR_API_KEY' // If needed
+                    },
+                    // body: method === 'POST' ? JSON.stringify({ some: 'data' }) : undefined // Add body if needed for POST
+                });
+
+                const responseData = await response.json();
+
+                resultsDiv.textContent = `Status: ${response.status} ${response.statusText}\n\nResponse Body:\n${JSON.stringify(responseData, null, 2)}`;
+
+                if (!response.ok) {
+                    resultsDiv.classList.add('error');
+                    console.error('API Error:', responseData);
+                } else {
+                    console.log('API Success:', responseData);
+                    // You might want to check browser dev tools (Application -> Cookies) here
+                    alert(`Request successful! Check console and browser dev tools (Application -> Cookies) to verify cookie changes.`);
+                }
+
+            } catch (error) {
+                resultsDiv.textContent = `Network or other error: ${error.message}`;
+                resultsDiv.classList.add('error');
+                console.error('Fetch Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

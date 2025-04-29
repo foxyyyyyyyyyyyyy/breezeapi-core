@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { BunRequest } from 'bun';
+export type { BunRequest } from 'bun';
 
 export interface ServerOptions {
     /**
@@ -115,7 +115,7 @@ export interface ServerOptions {
     }
 }
 
-type DefaultRequestProperties = {
+export type DefaultRequestProperties = {
     params?: Record<string, unknown>;
     query?: Record<string, unknown>;
     body?: Record<string, unknown>;
@@ -269,6 +269,17 @@ export interface apiRequest<
      */
     middleware?: Record<string, any>;
 
+    /**
+     * Bun: Cookie API (Bun.serve attaches this automatically).
+     * Provides get/set/delete for cookies.
+     */
+    cookies?: {
+        get(name: string): string | undefined;
+        set(name: string, value: string, options?: CookieOptions): void;
+        delete(name: string, options?: CookieOptions): void;
+        // Bun's cookies API may have more methods, but these are the main ones.
+    };
+
 }
 
 export interface apiResponse {
@@ -279,6 +290,14 @@ export interface apiResponse {
      * @returns The current instance for chaining.
      */
     header(name: string, value: string): this;
+
+    /**
+     * Sets a header value.
+     * @param name - The header name.
+     * @param value - The header value.
+     * @returns The current instance for chaining.
+     */
+    setHeader(name: string, value: string): this;
 
     /**
      * Removes a header.
@@ -711,3 +730,4 @@ export interface WebSocketRouteDefinition {
  * @param event - Optional event name.
  */
 export type SseSend = (data: any, event?: string) => void;
+
