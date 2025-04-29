@@ -20,7 +20,6 @@ export const openapi = {
 // Route-Specific Middleware
 export const middleware = [
     async (req: apiRequest, res: apiResponse, next: apiNext) => {
-        console.log("middleware", req)
         console.log('Product Detail Middleware');
         return next();
     },
@@ -31,7 +30,7 @@ export async function GET(req: apiRequest, res: apiResponse) {
     // --- Reading Cookies using req.getCookie ---
     const userId = req.getCookie('user_id'); // Use the new method
     const theme = req.getCookie('theme') || 'not set'; // Use the new method
-    const testCookie = req.getCookie('test_cookie'); // Use the new method
+    const testCookie = req.getCookie('X-eSportsApp-Token'); // Use the new method
 
     // You can also access the full map if needed:
     // const allCookiesMap = req.parsedCookies;

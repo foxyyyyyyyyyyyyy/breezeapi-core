@@ -53,8 +53,6 @@ export class Server {
                         return this.handleCorsPreflightRequest(request);
                     }*/
 
-   console.log('Request Headers:', request.headers);
-                    console.log('Cookie Header:', request.headers.get('Cookie'));
 
                     // Handle favicon requests
                     if (
@@ -257,9 +255,10 @@ export class Server {
                         'websocket'
                     ) {
                         const url = new URL(request.url);
+                        if(this.options.debug) {
                         console.log(
                             `WebSocket connection attempt: ${url.pathname}`
-                        );
+                        );}
                         const { route, id } = wsRouter.matchRoute(url.pathname);
 
                         if (route) {
@@ -271,11 +270,12 @@ export class Server {
 
                             // Group path should be the actual client path
                             const groupPath = url.pathname;
+                        if(this.options.debug) {
 
                             console.log(
                                 `WebSocket connection to group: ${groupPath}, id: ${id}`
                             );
-
+                        }
                             // Upgrade with data that will be available in the WebSocket handlers
                             server.upgrade(request, {
                                 data: {
@@ -286,11 +286,12 @@ export class Server {
                             });
                             return undefined;
                         }
+                        if(this.options.debug) {
 
                         // No matching WebSocket route
                         console.log(
                             `No WebSocket route found for: ${url.pathname}`
-                        );
+                        );}
                         return new Response('WebSocket not found', {
                             status: 404,
                         });

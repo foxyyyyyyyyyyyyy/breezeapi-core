@@ -254,7 +254,6 @@ export class BreezeAPI {
 
         // This function now returns the actual fetch handler for Bun.serve
         return async (apiRequest: apiRequest, apiResponse: apiResponse) => {
-            console.log('out of route', apiRequest)
 
             try {
                 // If no API router, fallback to 404
